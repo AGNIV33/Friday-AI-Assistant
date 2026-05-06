@@ -20,6 +20,7 @@ A real-time, voice-to-voice AI desktop assistant powered by Gemini Live API, ins
 ### Prerequisites
 - Node.js 18+
 - Windows OS (Required for deep system integrations like App launching and Word automation)
+- A Firebase Project (for Auth & Database memory)
 
 ### Install & Run
 
@@ -33,7 +34,7 @@ npm run dev
 npm run electron:dev
 ```
 
-### Environment Variables & API Keys
+### 1. Environment Variables & API Keys
 
 To use all of Friday's features, you need to set up your API keys. Create a `.env` file in the project root (you can copy `.env.example`) and add:
 
@@ -50,6 +51,23 @@ VITE_MAPBOX_TOKEN="your_mapbox_public_token_here"
 
 *Note: You can also configure the Gemini and NVIDIA API keys directly in the application via **Settings > System**.*
 
+### 2. Firebase Configuration (Auth & Memory)
+
+Friday uses Firebase for Google Login and to remember facts about you persistently. 
+Rename `firebase-applet-config.example.json` to `firebase-applet-config.json` and fill in your Firebase project configuration:
+
+```json
+{
+  "apiKey": "your_api_key_here",
+  "authDomain": "your_project.firebaseapp.com",
+  "projectId": "your_project_id",
+  "storageBucket": "your_project.appspot.com",
+  "messagingSenderId": "1234567890",
+  "appId": "1:1234567890:web:abcdef123456",
+  "firestoreDatabaseId": "(default)"
+}
+```
+
 ## Tech Stack
 
 - **Frontend**: React + TypeScript + Vite
@@ -59,3 +77,6 @@ VITE_MAPBOX_TOKEN="your_mapbox_public_token_here"
 - **Auth/Memory**: Firebase (Auth + Firestore)
 - **Styling**: Tailwind CSS + custom GPU-accelerated animations
 - **Audio**: Web Audio API with AudioWorklet
+
+---
+*Made by AGNIV Sarkar*

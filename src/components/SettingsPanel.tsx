@@ -938,7 +938,7 @@ function SystemTab({ settings, updateSettings, currentTheme, addToast }: {
       >
         <strong className="text-white/35">Silent:</strong> Reduces background processing & animations.{' '}
         <strong className="text-white/35">Performance:</strong> Balanced mode for everyday use.{' '}
-        <strong className="text-white/35">Turbo:</strong> Enables GPU acceleration (GTX 1650) for faster inference and peak responsiveness.
+        <strong className="text-white/35">Turbo:</strong> Enables GPU acceleration for faster inference and peak responsiveness.
       </div>
     </div>
   );

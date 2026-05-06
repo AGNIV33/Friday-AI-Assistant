@@ -6,6 +6,9 @@ const fs = require('fs');
 const os = require('os');
 const https = require('https');
 
+// ── Load .env file into process.env ───────────────────────────────
+require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
+
 // ── Single-instance lock ───────────────────────────────────────────
 // Prevents a second instance from fighting over the same cache files,
 // which is the root cause of the "Unable to move the cache" 0x5 errors.
@@ -54,7 +57,7 @@ app.commandLine.appendSwitch('disk-cache-dir', CACHE_PATH);
 })();
 
 // ── GPU & Rendering Performance ──────────────────────────────────────────────
-// Force dedicated GPU (GTX 1650) and enable all hardware-acceleration paths.
+// Force dedicated GPU and enable all hardware-acceleration paths.
 app.commandLine.appendSwitch('force_high_performance_gpu');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');              // never fall back to software
 app.commandLine.appendSwitch('enable-gpu-rasterization');          // rasterise on GPU
@@ -2221,7 +2224,7 @@ ipcMain.handle('search-files', async (event, { query, searchIn, type }) => {
       return;
     }
 
-    const homeDir = os.homedir(); // e.g. C:\Users\AGNIV
+    const homeDir = os.homedir();
     const searchTerms = query.toLowerCase().split(/\s+/).filter(t => t.length > 1);
     const searchType = type || 'all'; // 'file', 'folder', 'all'
 
