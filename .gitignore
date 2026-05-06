@@ -1,0 +1,26 @@
+node_modules/
+build/
+dist/
+dist_electron/
+coverage/
+.DS_Store
+*.log
+
+# Environment files
+.env*
+!.env.example
+firebase-applet-config.json
+
+# WhatsApp session caches
+.wwebjs_cache/
+.wwebjs_auth/
+
+# Friday local conversation cache
+.friday-data/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db

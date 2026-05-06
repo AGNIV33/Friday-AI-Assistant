@@ -1,0 +1,92 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: {uid}
+// Fields:
+//   - role: string (required) - User role (e.g., 'user')
+//
+// Collection: users/{uid}/memory
+// Document ID: main
+// Fields:
+//   - uid: string (required) - Matches owner UID
+//   - facts: list (required) - Array of strings
+//   - lastInteraction: string (optional) - ISO 8601 timestamp
+//   - preferences: map (optional) - Key-value pairs
+//
+// Collection: users/{uid}/summaries
+// Document ID: {summaryId}
+// Fields:
+//   - uid: string (required) - Matches owner UID
+//   - summary: string (required) - Text summary
+//   - timestamp: string (required) - ISO 8601 timestamp
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidMemory(data) {
+      return data.keys().hasAll(['uid', 'facts']) &&
+             data.uid == request.auth.uid &&
+             data.facts is list &&
+             data.facts.size() <= 100;
+    }
+
+    function isValidSummary(data) {
+      return data.keys().hasAll(['uid', 'summary', 'timestamp']) &&
+             data.uid == request.auth.uid &&
+             data.summary is string && data.summary.size() < 5000 &&
+             isValidDateString(data.timestamp);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /memory/main {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidMemory(request.resource.data);
+      }
+
+      match /summaries/{summaryId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidSummary(request.resource.data);
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

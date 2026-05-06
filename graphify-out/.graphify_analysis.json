@@ -1,0 +1,355 @@
+{
+  "communities": {
+    "0": [
+      "components_staticorbrenderers_drawatom",
+      "components_staticorbrenderers_drawcrescent",
+      "components_staticorbrenderers_drawcrosshair",
+      "components_staticorbrenderers_drawdiamond",
+      "components_staticorbrenderers_drawdotgrid",
+      "components_staticorbrenderers_drawdoublering",
+      "components_staticorbrenderers_draweye",
+      "components_staticorbrenderers_drawglow",
+      "components_staticorbrenderers_drawgradientsphere",
+      "components_staticorbrenderers_drawhexagon",
+      "components_staticorbrenderers_drawinfinity",
+      "components_staticorbrenderers_drawlotus",
+      "components_staticorbrenderers_drawminimalistdot",
+      "components_staticorbrenderers_drawoctagon",
+      "components_staticorbrenderers_drawring",
+      "components_staticorbrenderers_drawrotatedsquare",
+      "components_staticorbrenderers_drawshield",
+      "components_staticorbrenderers_drawsolidcircle",
+      "components_staticorbrenderers_drawstarburst",
+      "components_staticorbrenderers_drawtriangle",
+      "components_staticorbrenderers_drawtriplering",
+      "components_staticorbrenderers_isstaticorbstyle",
+      "components_staticorbrenderers_lerpc",
+      "components_staticorbrenderers_polygon",
+      "components_staticorbrenderers_rgba",
+      "components_staticorbrenderers_statecolor",
+      "src_components_staticorbrenderers_ts"
+    ],
+    "1": [
+      "lib_live_session_livesession",
+      "lib_live_session_livesession_connect",
+      "lib_live_session_livesession_constructor",
+      "lib_live_session_livesession_disconnect",
+      "lib_live_session_livesession_sendaudio",
+      "lib_live_session_livesession_sendtext",
+      "lib_live_session_livesession_setstate",
+      "lib_usefriday_usefriday",
+      "lib_usesettings_loadsettings",
+      "lib_usesettings_savesettings",
+      "lib_usesettings_usesettings",
+      "lib_usetoast_usetoast",
+      "src_app_tick",
+      "src_app_tsx",
+      "src_lib_live_session_ts",
+      "src_lib_usefriday_ts",
+      "src_lib_usesettings_ts",
+      "src_lib_usetoast_ts",
+      "src_main_tsx"
+    ],
+    "2": [
+      "lib_audio_streamer_audiostreamer",
+      "lib_audio_streamer_audiostreamer_arraybuffertobase64",
+      "lib_audio_streamer_audiostreamer_base64toarraybuffer",
+      "lib_audio_streamer_audiostreamer_constructor",
+      "lib_audio_streamer_audiostreamer_dispose",
+      "lib_audio_streamer_audiostreamer_ensureplaybackcontext",
+      "lib_audio_streamer_audiostreamer_floattopcm16",
+      "lib_audio_streamer_audiostreamer_flushplaybackqueue",
+      "lib_audio_streamer_audiostreamer_getplaybackamplitude",
+      "lib_audio_streamer_audiostreamer_ismuted",
+      "lib_audio_streamer_audiostreamer_pcm16tofloat32",
+      "lib_audio_streamer_audiostreamer_playaudiochunk",
+      "lib_audio_streamer_audiostreamer_setmuted",
+      "lib_audio_streamer_audiostreamer_start",
+      "lib_audio_streamer_audiostreamer_startwithscriptprocessor",
+      "lib_audio_streamer_audiostreamer_startwithworklet",
+      "lib_audio_streamer_audiostreamer_stop",
+      "lib_audio_streamer_audiostreamer_stopplayback",
+      "src_lib_audio_streamer_ts"
+    ],
+    "3": [
+      "components_fridayorb_displacement",
+      "components_fridayorb_fridayorb",
+      "components_fridayorb_hextorgb",
+      "components_fridayorb_lerpcolor",
+      "components_orbrenderers_drawparticlecloud",
+      "components_orbrenderers_drawpulserings",
+      "components_orbrenderers_drawwaveform",
+      "components_orbrenderers_ensurecloudpts",
+      "components_orbrenderers_lerp",
+      "components_orbrenderers_lerpc",
+      "components_orbrenderers_poscol",
+      "components_orbrenderers_renderorbstyle",
+      "components_orbrenderers_rgba",
+      "components_staticorbrenderers_renderstaticorb",
+      "src_components_fridayorb_tsx",
+      "src_components_orbrenderers_ts"
+    ],
+    "4": [
+      "public_audio_capture_processor_audiocaptureprocessor",
+      "public_audio_capture_processor_audiocaptureprocessor_accumulateandsend",
+      "public_audio_capture_processor_audiocaptureprocessor_base64encode",
+      "public_audio_capture_processor_audiocaptureprocessor_constructor",
+      "public_audio_capture_processor_audiocaptureprocessor_floattopcm16base64",
+      "public_audio_capture_processor_audiocaptureprocessor_flushbuffer",
+      "public_audio_capture_processor_audiocaptureprocessor_getrms",
+      "public_audio_capture_processor_audiocaptureprocessor_process",
+      "public_audio_capture_processor_audiocaptureprocessor_sendchunk",
+      "public_audio_capture_processor_js"
+    ],
+    "5": [
+      "lib_perf_performancetracker",
+      "lib_perf_performancetracker_clear",
+      "lib_perf_performancetracker_end",
+      "lib_perf_performancetracker_getaverage",
+      "lib_perf_performancetracker_getsummary",
+      "lib_perf_performancetracker_measure",
+      "lib_perf_performancetracker_printsummary",
+      "lib_perf_performancetracker_start",
+      "src_lib_perf_ts"
+    ],
+    "6": [
+      "app_tsx_app",
+      "audiocaptureprocessor_js_audiocaptureprocessor",
+      "audiostreamer_ts_audiostreamer",
+      "firebase_ts_memoryservice",
+      "fridayorb_tsx_fridayorb",
+      "livesession_ts_livesession",
+      "mapview_tsx_mapview",
+      "perf_ts_perf",
+      "usefriday_ts_usefriday"
+    ],
+    "7": [
+      "components_appbrowser_handleaddapp",
+      "components_appbrowser_handleopenapp",
+      "components_appbrowser_handleremovecustomapp",
+      "components_appbrowser_loadcustomapps",
+      "components_appbrowser_savecustomapps",
+      "src_components_appbrowser_tsx"
+    ],
+    "8": [
+      "components_settingspanel_handleaddfact",
+      "components_settingspanel_handledeletefact",
+      "components_settingspanel_handleimageupload",
+      "components_settingspanel_handlelogout",
+      "components_settingspanel_handlesaveinstructions",
+      "src_components_settingspanel_tsx"
+    ],
+    "9": [
+      "public_wake_detector_processor_js",
+      "public_wake_detector_processor_wakedetectorprocessor",
+      "public_wake_detector_processor_wakedetectorprocessor_constructor",
+      "public_wake_detector_processor_wakedetectorprocessor_process"
+    ],
+    "10": [
+      "lib_firebase_handlefirestoreerror",
+      "lib_firebase_testconnection",
+      "src_lib_firebase_ts"
+    ],
+    "11": [
+      "src_components_widgets_newswidget_tsx",
+      "widgets_newswidget_timeago"
+    ],
+    "12": [
+      "vite_config_ts"
+    ],
+    "13": [
+      "src_components_mapview_tsx"
+    ],
+    "14": [
+      "src_components_progressbar_tsx"
+    ],
+    "15": [
+      "src_components_toast_tsx"
+    ],
+    "16": [
+      "usesettings_ts_usesettings"
+    ],
+    "17": [
+      "main_tsx_createroot"
+    ],
+    "18": [
+      "readme_md_friday_ai"
+    ],
+    "19": [
+      "src_lib_orbstyles_ts"
+    ],
+    "20": [
+      "src_components_widgetmanager_tsx"
+    ],
+    "21": [
+      "src_components_widgets_imagewidget_tsx"
+    ],
+    "22": [
+      "src_components_widgets_musicwidget_tsx"
+    ],
+    "23": [
+      "src_components_widgets_widgetshell_tsx"
+    ],
+    "24": [
+      "src_components_widgets_youtubewidget_tsx"
+    ]
+  },
+  "cohesion": {
+    "0": 0.26,
+    "1": 0.11,
+    "2": 0.15,
+    "3": 0.23,
+    "4": 0.36,
+    "5": 0.31,
+    "6": 0.25,
+    "7": 0.47,
+    "8": 0.33,
+    "9": 0.5,
+    "10": 0.67,
+    "11": 1.0,
+    "12": 1.0,
+    "13": 1.0,
+    "14": 1.0,
+    "15": 1.0,
+    "16": 1.0,
+    "17": 1.0,
+    "18": 1.0,
+    "19": 1.0,
+    "20": 1.0,
+    "21": 1.0,
+    "22": 1.0,
+    "23": 1.0,
+    "24": 1.0
+  },
+  "gods": [
+    {
+      "id": "components_staticorbrenderers_rgba",
+      "label": "rgba()",
+      "degree": 22
+    },
+    {
+      "id": "components_staticorbrenderers_drawglow",
+      "label": "drawGlow()",
+      "degree": 22
+    },
+    {
+      "id": "components_staticorbrenderers_statecolor",
+      "label": "stateColor()",
+      "degree": 21
+    },
+    {
+      "id": "lib_audio_streamer_audiostreamer",
+      "label": "AudioStreamer",
+      "degree": 19
+    },
+    {
+      "id": "public_audio_capture_processor_audiocaptureprocessor",
+      "label": "AudioCaptureProcessor",
+      "degree": 9
+    },
+    {
+      "id": "lib_perf_performancetracker",
+      "label": "PerformanceTracker",
+      "degree": 8
+    },
+    {
+      "id": "lib_live_session_livesession",
+      "label": "LiveSession",
+      "degree": 8
+    },
+    {
+      "id": "components_orbrenderers_renderorbstyle",
+      "label": "renderOrbStyle()",
+      "degree": 6
+    },
+    {
+      "id": "usefriday_ts_usefriday",
+      "label": "useFriday Hook",
+      "degree": 6
+    },
+    {
+      "id": "components_staticorbrenderers_polygon",
+      "label": "polygon()",
+      "degree": 6
+    }
+  ],
+  "surprises": [
+    {
+      "source": "renderOrbStyle()",
+      "target": "renderStaticOrb()",
+      "source_files": [
+        "src\\components\\orbRenderers.ts",
+        "src\\components\\staticOrbRenderers.ts"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
+    },
+    {
+      "source": "AudioCaptureProcessor Worklet",
+      "target": "AudioStreamer Class",
+      "source_files": [
+        "public/audio-capture-processor.js",
+        "src/lib/audio-streamer.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories"
+    },
+    {
+      "source": "MapView Component",
+      "target": "useFriday Hook",
+      "source_files": [
+        "src/components/MapView.tsx",
+        "src/lib/useFriday.ts"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; peripheral node `MapView Component` unexpectedly reaches hub `useFriday Hook`"
+    },
+    {
+      "source": "useFriday Hook",
+      "target": "LiveSession class",
+      "source_files": [
+        "src/lib/useFriday.ts",
+        "src/lib/live-session.ts"
+      ],
+      "confidence": "INFERRED",
+      "relation": "rationale_for",
+      "why": "inferred connection - not explicitly stated in source; peripheral node `LiveSession class` unexpectedly reaches hub `useFriday Hook`"
+    },
+    {
+      "source": "Memory Service",
+      "target": "useFriday Hook",
+      "source_files": [
+        "src/lib/firebase.ts",
+        "src/lib/useFriday.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "peripheral node `Memory Service` unexpectedly reaches hub `useFriday Hook`"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `AudioStreamer` connect `Community 2` to `Community 1`?",
+      "why": "High betweenness centrality (0.048) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `renderStaticOrb()` connect `Community 3` to `Community 0`?",
+      "why": "High betweenness centrality (0.040) - this node is a cross-community bridge."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `AudioCaptureProcessor Worklet`, `Memory Service`, `useSettings Hook` to the rest of the system?",
+      "why": "8 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 1` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.11 - nodes in this community are weakly interconnected."
+    }
+  ]
+}

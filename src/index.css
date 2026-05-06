@@ -1,0 +1,538 @@
+@import "tailwindcss";
+
+@theme {
+  --color-friday-blue: #00f2ff;
+  --color-friday-red: #ff0055;
+  --color-friday-dark: #050505;
+  
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-friday-dark text-white overflow-hidden;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 242, 255, 0.6);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+/* Custom scrollbar for settings panel */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ─── Animated Gradient Themes ─────────────────────────────────────────────── */
+
+@keyframes gradient-rotate {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes gradient-swatch-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gradient-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes gradient-border-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Swatch preview in settings panel */
+.gradient-swatch {
+  background-size: 300% 300%;
+  animation: gradient-rotate 4s ease infinite;
+}
+
+.gradient-swatch-ring {
+  animation: gradient-swatch-spin 6s linear infinite;
+}
+
+/* Active gradient border on selected cards */
+.gradient-border-animated {
+  position: relative;
+  overflow: hidden;
+}
+
+.gradient-border-animated::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: var(--card-gradient);
+  background-size: 300% 300%;
+  animation: gradient-rotate 3s ease infinite;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+}
+
+/* Gradient text shimmer for theme name */
+.gradient-text-animated {
+  background-size: 400% auto;
+  animation: gradient-shimmer 3s linear infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Gradient tag/badge */
+.gradient-tag {
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* ─── Responsive Layout ───────────────────────────────────────────────────── */
+
+/* Responsive orb container — scales with viewport and user preference */
+.friday-orb-container {
+  --orb-scale: 1;
+  --orb-base: calc(50vmin * var(--orb-scale));
+  width: clamp(160px, var(--orb-base), calc(600px * var(--orb-scale)));
+  height: clamp(160px, var(--orb-base), calc(600px * var(--orb-scale)));
+  flex-shrink: 1;
+  min-width: 0;
+  min-height: 0;
+  /* Isolate the orb's paint/layout from the rest of the document.
+     This is the single biggest rendering win — the browser no longer
+     needs to repaint surrounding elements when the canvas changes. */
+  contain: layout style;
+  /* Promote to its own compositor layer */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.friday-orb-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
+
+/* Responsive main button */
+.friday-main-btn {
+  width: clamp(80px, 15vmin, 128px);
+  height: clamp(80px, 15vmin, 128px);
+}
+
+.friday-main-btn svg {
+  width: clamp(28px, 6vmin, 48px);
+  height: clamp(28px, 6vmin, 48px);
+}
+
+/* Responsive title */
+.friday-title {
+  font-size: clamp(1.2rem, 4vmin, 2.25rem);
+}
+
+/* Responsive top bar */
+.friday-top-bar {
+  padding: clamp(8px, 2vmin, 32px) clamp(12px, 2.5vw, 32px);
+  gap: clamp(4px, 1vmin, 12px);
+}
+
+.friday-clock {
+  font-size: clamp(0.65rem, 2vmin, 1.5rem);
+}
+
+.friday-date {
+  font-size: clamp(7px, 1vmin, 10px);
+}
+
+/* Responsive bottom bar */
+.friday-bottom-bar {
+  padding: clamp(4px, 1vh, 16px) clamp(8px, 2vw, 24px);
+}
+
+/* Responsive gap between central elements */
+.friday-center-gap {
+  gap: clamp(8px, 2vmin, 48px);
+}
+
+/* Responsive visualizer bars */
+.friday-visualizer {
+  height: clamp(24px, 5vmin, 48px);
+  gap: clamp(1px, 0.3vmin, 4px);
+}
+
+.friday-visualizer-bar {
+  width: clamp(2px, 0.4vmin, 4px);
+}
+
+/* Responsive status text */
+.friday-status {
+  font-size: clamp(8px, 1.2vmin, 12px);
+}
+
+/* ─── Media Queries ───────────────────────────────────────────────────────── */
+
+/* Very small windows (<500px width or <400px height) */
+@media (max-width: 500px), (max-height: 400px) {
+  .friday-top-bar {
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+  .friday-top-bar .friday-spacer {
+    display: none;
+  }
+  .friday-bottom-bar > div {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px !important;
+  }
+  .friday-orb-container {
+    width: clamp(140px, 40vmin, 280px);
+    height: clamp(140px, 40vmin, 280px);
+  }
+  .friday-title {
+    font-size: clamp(0.9rem, 3vmin, 1.4rem);
+  }
+}
+
+/* Medium windows */
+@media (min-width: 501px) and (max-width: 900px) {
+  .friday-top-bar {
+    padding: 12px 16px;
+  }
+  .friday-orb-container {
+    width: clamp(180px, 45vmin, 400px);
+    height: clamp(180px, 45vmin, 400px);
+  }
+}
+
+/* Very short windows */
+@media (max-height: 500px) {
+  .friday-center-gap {
+    gap: 4px;
+  }
+  .friday-orb-container {
+    width: clamp(120px, 35vmin, 250px);
+    height: clamp(120px, 35vmin, 250px);
+  }
+  .friday-title {
+    font-size: clamp(0.8rem, 2.5vmin, 1.2rem);
+  }
+  .friday-clock {
+    font-size: clamp(0.6rem, 1.8vmin, 0.9rem);
+  }
+  .friday-date {
+    display: none;
+  }
+}
+
+/* Ultrawide */
+@media (min-aspect-ratio: 21/9) {
+  .friday-top-bar {
+    padding-left: 5vw;
+    padding-right: 5vw;
+  }
+}
+
+/* Tall / portrait */
+@media (max-aspect-ratio: 3/4) {
+  .friday-top-bar {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .friday-top-bar .friday-spacer {
+    display: none;
+  }
+}
+
+/* ─── Accessibility: Reduced Motion ──────────────────────────────────────── */
+/* Respects OS-level "Reduce motion" setting for users with vestibular disorders */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disable all CSS animations */
+  .gradient-swatch,
+  .gradient-swatch-ring,
+  .gradient-border-animated::before,
+  .gradient-text-animated,
+  .animate-pulse-glow {
+    animation: none !important;
+  }
+
+  /* Disable transitions */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Freeze gradient at first frame */
+  .gradient-text-animated {
+    background-position: 0% center !important;
+  }
+
+  .gradient-swatch {
+    background-position: 0% 50% !important;
+  }
+}
+
+/* ─── GPU Acceleration Hints ─────────────────────────────────────────────── */
+/* Promote animated layers to their own GPU compositor layer.
+   Only use will-change for elements that genuinely animate —
+   overuse wastes VRAM and can HURT performance. */
+
+.friday-orb-container canvas {
+  /* The canvas itself changes its contents every frame.
+     'contents' is the correct hint (not 'transform' or 'paint'). */
+  will-change: contents;
+}
+
+.friday-main-btn {
+  will-change: box-shadow;
+}
+
+.friday-visualizer-bar {
+  will-change: height;
+}
+
+.gradient-swatch,
+.gradient-border-animated::before,
+.gradient-text-animated {
+  will-change: background-position;
+  /* Force own compositor layer so the background-position animation
+     never triggers a main-thread repaint on parent elements */
+  transform: translateZ(0);
+}
+
+/* Atmosphere background layer — only opacity/transform animate */
+.friday-atmosphere {
+  will-change: opacity;
+  transform: translateZ(0);
+}
+
+/* ─── Content Visibility for Off-Screen Panels ───────────────────────────── */
+/* Skips layout/paint for panels that aren't visible */
+
+.settings-panel-content,
+.app-browser-content {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 600px; /* approximate size hint */
+}
+
+/* ─── Map View: Holographic Tactical Styling ─────────────────────────────── */
+
+@keyframes mapFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Scanline overlay */
+.friday-map-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 180, 255, 0.015) 2px,
+    rgba(0, 180, 255, 0.015) 4px
+  );
+  mix-blend-mode: screen;
+}
+
+/* Pulsing marker at target location */
+.friday-map-marker {
+  position: relative;
+  width: 24px;
+  height: 24px;
+}
+
+.friday-map-marker .marker-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  background: #00f2ff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px 3px rgba(0, 242, 255, 0.6);
+  z-index: 2;
+}
+
+.friday-map-marker .marker-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 1.5px solid rgba(0, 242, 255, 0.5);
+  border-radius: 50%;
+  animation: markerPulse 2s ease-out infinite;
+  z-index: 1;
+}
+
+@keyframes markerPulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+/* Override Mapbox controls to match tactical theme */
+.mapboxgl-ctrl-group {
+  background: rgba(0, 0, 0, 0.7) !important;
+  border: 1px solid rgba(0, 242, 255, 0.2) !important;
+  backdrop-filter: blur(8px);
+}
+
+.mapboxgl-ctrl-group button {
+  border-color: rgba(0, 242, 255, 0.1) !important;
+}
+
+.mapboxgl-ctrl-group button + button {
+  border-top-color: rgba(0, 242, 255, 0.1) !important;
+}
+
+.mapboxgl-ctrl-group button:focus:first-child,
+.mapboxgl-ctrl-group button:focus:last-child {
+  border-radius: inherit;
+}
+
+.mapboxgl-ctrl-icon {
+  filter: invert(1) brightness(0.7) sepia(1) hue-rotate(160deg) saturate(3);
+}
+
+/* Hide Mapbox logo and attribution in HUD mode */
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right {
+  opacity: 0.2;
+}
+
+/* ─── Orb Minimized State (Map Mode) ─────────────────────────────────────── */
+
+.friday-orb-minimized {
+  position: fixed !important;
+  bottom: 24px;
+  right: 24px;
+  z-index: 50;
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.friday-orb-minimized .friday-orb-container {
+  --orb-scale: 0.35 !important;
+  width: 120px !important;
+  height: 120px !important;
+}
+
+.friday-orb-minimized .friday-orb-mic-btn {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+.friday-orb-minimized .friday-orb-mic-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* ─── Widget System ──────────────────────────────────────────────────────── */
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Widget shell — promoted to own layer for smooth dragging */
+.friday-widget-shell {
+  contain: layout style;
+  transform: translateZ(0);
+}
+
+/* Widget drag handle cursor */
+.friday-widget-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Widget close button hover glow */
+.friday-widget-close-btn:hover {
+  box-shadow: 0 0 8px rgba(255, 60, 60, 0.3);
+}
+
+/* Widget content scrollbar */
+.friday-widget-shell .custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+/* Widget iframe container — prevents iframe from eating drag events */
+.friday-widget-shell iframe {
+  pointer-events: auto;
+}
