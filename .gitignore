@@ -24,3 +24,6 @@ firebase-applet-config.json
 
 # OS
 Thumbs.db
+
+# Graphify
+graphify-out/
