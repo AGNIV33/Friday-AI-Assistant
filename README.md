@@ -6,7 +6,7 @@ A real-time, voice-to-voice AI desktop assistant powered by Gemini Live API, ins
 
 - **Voice-to-Voice AI** — Speak naturally, Friday responds with fluid voice using the Gemini Live API.
 - **Desktop Automation** — Open/close apps, manage files, and write documents natively in Microsoft Word and Notepad.
-- **Geospatial Intelligence** — Real-time 3D interactive Mapbox maps with tactical holographic overlays.
+- **Interactive Map Viewer (Geospatial Intelligence)** — Ask Friday to view a map of any city, country, or location, and it will render a real-time 3D interactive Mapbox map with tactical holographic overlays directly on your screen.
 - **AI Image Generation** — Generate high-quality images from text prompts using NVIDIA's AI models.
 - **Dynamic Memory** — Remembers facts and conversation summaries across sessions, persistently saving instructions.
 - **WhatsApp Integration** — Send messages seamlessly via WhatsApp Web.
