@@ -1806,7 +1806,7 @@ let lastGeneratedImagePath = null;
 
 ipcMain.handle('generate-image', async (event, prompt) => {
   return new Promise((resolve) => {
-    const NVIDIA_API_KEY = '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';
+    const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
 
     const payload = JSON.stringify({
       prompt: prompt.substring(0, 800),
