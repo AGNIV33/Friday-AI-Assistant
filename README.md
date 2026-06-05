@@ -6,6 +6,7 @@ A real-time, voice-to-voice AI desktop assistant powered by Gemini Live API, ins
 
 - **Voice-to-Voice AI** — Speak naturally, Friday responds with fluid voice using the Gemini Live API.
 - **Desktop Automation** — Open/close apps, manage files, and write documents natively in Microsoft Word and Notepad.
+- **Vision Intelligence** — Visually analyze your screen and webcam feed with a cinematic JARVIS-style HUD powered by NVIDIA Nemotron.
 - **Interactive Map Viewer (Geospatial Intelligence)** — Ask Friday to view a map of any city, country, or location, and it will render a real-time 3D interactive Mapbox map with tactical holographic overlays directly on your screen.
 - **AI Image Generation** — Generate high-quality images from text prompts using NVIDIA's AI models.
 - **Dynamic Memory** — Remembers facts and conversation summaries across sessions, persistently saving instructions.
@@ -47,6 +48,11 @@ NVIDIA_API_KEY="your_nvidia_api_key_here"
 
 # Required for Geospatial Intelligence (3D Maps)
 VITE_MAPBOX_TOKEN="your_mapbox_public_token_here"
+
+# Required for Vision Intelligence Module
+VITE_VISION_API_KEY="your_vision_api_key_here"
+VITE_VISION_MODEL="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+VITE_VISION_BASE_URL="https://integrate.api.nvidia.com/v1"
 ```
 
 *Note: You can also configure the Gemini and NVIDIA API keys directly in the application via **Settings > System**.*
