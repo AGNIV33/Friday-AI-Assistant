@@ -13,6 +13,7 @@ export const ORB_STYLES: OrbStyleConfig[] = [
   { id: 'pulse-ring',     name: 'Pulse Rings',      description: 'Concentric expanding rings',  icon: '🔘' },
   { id: 'particle-cloud', name: 'Particle Cloud',   description: 'Floating particle swarm',     icon: '✨' },
   { id: 'waveform',       name: 'Waveform',         description: 'Audio waveform circle',       icon: '🎵' },
+  { id: 'arcane-core',    name: 'Arcane Core',      description: 'Mystical energy sphere with rays', icon: '🔥' },
   // ── Static styles (pulse on speak, color on listen) ──
   { id: 'solid-circle',    name: 'Solid Circle',     description: 'Clean solid orb with glow',       icon: '⚫' },
   { id: 'gradient-sphere', name: 'Gradient Sphere',  description: '3D shaded sphere',                icon: '🔮' },

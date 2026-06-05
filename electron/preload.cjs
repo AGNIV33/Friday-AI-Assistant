@@ -62,4 +62,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Widgets
   fetchNews: () => ipcRenderer.invoke('fetch-news'),
   searchYoutubeEmbed: (query) => ipcRenderer.invoke('search-youtube-embed', { query }),
+  searchYoutubeNews: (query) => ipcRenderer.invoke('search-youtube-news', { query }),
+});
+
+// ─── Vision Module (isolated from electronAPI) ────────────────────────────────
+contextBridge.exposeInMainWorld('fridayVision', {
+  captureScreen: () => ipcRenderer.invoke('capture-screen'),
+  getCursorPosition: () => ipcRenderer.invoke('get-cursor-position'),
+  analyzeVision: (args) => ipcRenderer.invoke('analyze-vision', args),
 });

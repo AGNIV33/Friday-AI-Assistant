@@ -10,6 +10,7 @@ import type { Settings } from "./useSettings";
 import type { MapCommand } from "../components/MapView";
 import type { WidgetData } from "../components/WidgetManager";
 import { perf } from "./perf";
+import { useVisionCommands } from "../hooks/useVisionCommands";
 
 declare global {
   interface Window {
@@ -80,6 +81,7 @@ declare global {
       // Widgets
       fetchNews: () => Promise<{ success: boolean; articles?: any[]; error?: string }>;
       searchYoutubeEmbed: (query: string) => Promise<{ success: boolean; videoId?: string; embedUrl?: string; error?: string }>;
+      searchYoutubeNews: (query: string) => Promise<{ success: boolean; results?: any[]; cached?: boolean; error?: string }>;
     };
     SpeechRecognition?: any;
     webkitSpeechRecognition?: any;
@@ -103,6 +105,11 @@ export function useFriday(addToast?: (msg: string, type: 'success' | 'error' | '
   } | null>(null);
   const [mapCommand, setMapCommand] = useState<MapCommand | null>(null);
   const [widgets, setWidgets] = useState<WidgetData[]>([]);
+
+  // ── Vision Intelligence Module ──
+  const vision = useVisionCommands();
+  const visionRef = useRef(vision);
+  useEffect(() => { visionRef.current = vision; }, [vision]);
 
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
   const liveSessionRef = useRef<LiveSession | null>(null);
@@ -609,6 +616,28 @@ export function useFriday(addToast?: (msg: string, type: 'success' | 'error' | '
           } catch (_) {}
           perf.start(`tool:${name}`);
           try {
+            // ── Vision Intelligence Tool Handlers ──
+            if (name === "analyzeCamera") {
+              try {
+                const result = await visionRef.current.triggerCameraAnalysis(args.userPrompt || '');
+                return { success: true, description: result, message: `Vision analysis complete. Here is what I see: ${result}. Read this result naturally to the user.` };
+              } catch (err: any) {
+                return { error: `Camera analysis failed: ${err.message}` };
+              }
+            }
+            if (name === "analyzeScreen") {
+              try {
+                const result = await visionRef.current.triggerScreenAnalysis(args.userPrompt || '');
+                return { success: true, description: result, message: `Screen analysis complete. Here is what I see: ${result}. Read this result naturally to the user.` };
+              } catch (err: any) {
+                return { error: `Screen analysis failed: ${err.message}` };
+              }
+            }
+            if (name === "closeVision") {
+              visionRef.current.closeVision();
+              return { success: true, message: "Visual systems have been shut down." };
+            }
+
             if (name === "goToSleep") {
               // Friday has already spoken her goodbye — now we disconnect after a short pause
               setTimeout(() => {
@@ -646,9 +675,35 @@ export function useFriday(addToast?: (msg: string, type: 'success' | 'error' | '
 
             // ── Widget Tools ──
             if (name === "openWidget") {
-              const wType = (args.widgetType || 'custom') as 'music' | 'news' | 'image' | 'youtube' | 'custom';
+              const wType = (args.widgetType || 'custom') as 'music' | 'news' | 'image' | 'youtube' | 'newsvisualizer' | 'custom';
               const wId = `widget-${wType}-${Date.now()}`;
               const widgetData: any = {};
+
+              if (wType === 'newsvisualizer') {
+                widgetData.query = args.query || 'world news';
+                try {
+                  const res = await window.electronAPI.searchYoutubeNews(widgetData.query);
+                  if (res.success && res.results) {
+                    widgetData.results = res.results;
+                    const widget = { id: wId, type: wType, title: args.title || 'Intelligence Briefing', data: widgetData };
+                    openWidget(widget);
+                    
+                    // Format the news for Friday to dictate
+                    const headlines = res.results.slice(0, 5).map((r: any, i: number) => 
+                      `[Live Stream ${i + 1}] Channel: ${r.channelTitle} - Title: ${r.title}`
+                    ).join('\n');
+                    
+                    return { 
+                      success: true, 
+                      message: `News Dashboard opened with LIVE global video streams. You MUST now ACT AS A NEWS ANCHOR and naturally dictate/read out what's happening to the user right now using these fetched streams (keep it engaging and continuous):\n\n${headlines}` 
+                    };
+                  } else {
+                    return { success: false, error: 'Failed to fetch live news feeds.' };
+                  }
+                } catch (e: any) {
+                  return { success: false, error: e.message };
+                }
+              }
 
               if (wType === 'music' || wType === 'youtube') {
                 widgetData.query = args.query || '';
@@ -668,7 +723,7 @@ export function useFriday(addToast?: (msg: string, type: 'success' | 'error' | '
 
               openWidget(widget);
               addToast?.(`Widget opened: ${widget.title}`, "info");
-              return { success: true, message: `${widget.title} widget is now displayed on screen. The user can drag it anywhere and close it when done.` };
+              return { success: true, message: `${widget.title} widget is now displayed on screen.` };
             }
 
             if (name === "closeWidget") {
@@ -691,6 +746,13 @@ export function useFriday(addToast?: (msg: string, type: 'success' | 'error' | '
               closeAllWidgets();
               addToast?.("All widgets closed.", "info");
               return { success: true, message: "All widgets have been closed." };
+            }
+
+            if (name === "controlNewsWidget") {
+              const action = args.action;
+              // Dispatch event to NewsVisualizer and WidgetShell
+              window.dispatchEvent(new CustomEvent('friday-news-control', { detail: { action } }));
+              return { success: true, message: `Control action '${action}' sent to News Visualizer.` };
             }
 
             if (name === "openWebsite") {
@@ -1373,12 +1435,17 @@ export function useFriday(addToast?: (msg: string, type: 'success' | 'error' | '
     widgets,
     login,
     toggleConnection,
-    connect,
-    disconnect,
     clearMapCommand,
     getPlaybackAmplitude,
-    openWidget,
     closeWidget,
-    closeAllWidgets,
+    // Vision Intelligence
+    isVisionActive: vision.isVisionActive,
+    visionMode: vision.visionMode,
+    visionResult: vision.currentResult,
+    visionVideoRef: vision.videoRef,
+    visionScreenThumbnail: vision.screenThumbnail,
+    visionCursorPosition: vision.cursorPosition,
+    visionScreenDimensions: vision.screenDimensions,
+    closeVision: vision.closeVision,
   };
 }

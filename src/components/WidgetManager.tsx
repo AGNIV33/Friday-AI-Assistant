@@ -2,7 +2,7 @@
  * WidgetManager — Container that renders all active Friday widgets.
  * 
  * Each widget is wrapped in a WidgetShell (draggable, closeable).
- * Widget types: music, news, image, youtube, custom
+ * Widget types: music, news, image, youtube, newsvisualizer, custom
  */
 import React from 'react';
 import WidgetShell from './widgets/WidgetShell';
@@ -10,10 +10,11 @@ import MusicWidget from './widgets/MusicWidget';
 import NewsWidget from './widgets/NewsWidget';
 import ImageWidget from './widgets/ImageWidget';
 import YouTubeWidget from './widgets/YouTubeWidget';
+import NewsVisualizer from './widgets/NewsVisualizer';
 
 export interface WidgetData {
   id: string;
-  type: 'music' | 'news' | 'image' | 'youtube' | 'custom';
+  type: 'music' | 'news' | 'image' | 'youtube' | 'newsvisualizer' | 'custom';
   title: string;
   data: Record<string, any>;
   position?: { x: number; y: number };
@@ -27,14 +28,34 @@ interface WidgetManagerProps {
 }
 
 const DEFAULT_SIZES: Record<string, { width: number; height: number }> = {
-  music:   { width: 340, height: 300 },
-  news:    { width: 360, height: 440 },
-  image:   { width: 380, height: 340 },
-  youtube: { width: 420, height: 300 },
-  custom:  { width: 340, height: 260 },
+  music:          { width: 340, height: 300 },
+  news:           { width: 360, height: 440 },
+  image:          { width: 380, height: 340 },
+  youtube:        { width: 420, height: 300 },
+  newsvisualizer: { width: 960, height: 600 },
+  custom:         { width: 340, height: 260 },
 };
 
 export default function WidgetManager({ widgets, onCloseWidget, accentColor = '#00f2ff' }: WidgetManagerProps) {
+  const [fullscreenWidgets, setFullscreenWidgets] = React.useState<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    const handleControl = (e: any) => {
+      const action = e.detail?.action;
+      if (action === 'fullscreen' || action === 'windowed') {
+        const nvWidget = widgets.find(w => w.type === 'newsvisualizer');
+        if (nvWidget) {
+          setFullscreenWidgets(prev => ({
+            ...prev,
+            [nvWidget.id]: action === 'fullscreen'
+          }));
+        }
+      }
+    };
+    window.addEventListener('friday-news-control', handleControl);
+    return () => window.removeEventListener('friday-news-control', handleControl);
+  }, [widgets]);
+
   if (widgets.length === 0) return null;
 
   return (
@@ -55,6 +76,7 @@ export default function WidgetManager({ widgets, onCloseWidget, accentColor = '#
               height={size.height}
               initialX={pos.x}
               initialY={pos.y}
+              isFullScreen={fullscreenWidgets[w.id] || false}
               onClose={onCloseWidget}
               accentColor={accentColor}
             >
@@ -68,6 +90,13 @@ export default function WidgetManager({ widgets, onCloseWidget, accentColor = '#
                 <ImageWidget
                   src={w.data.src || w.data.url || ''}
                   caption={w.data.caption}
+                  accentColor={accentColor}
+                />
+              )}
+              {w.type === 'newsvisualizer' && (
+                <NewsVisualizer
+                  query={w.data.query || 'world news'}
+                  initialResults={w.data.results}
                   accentColor={accentColor}
                 />
               )}

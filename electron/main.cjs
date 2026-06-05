@@ -41,7 +41,8 @@ app.commandLine.appendSwitch('disk-cache-dir', CACHE_PATH);
 (function purgeStaleCacheIfCorrupted() {
   try {
     if (!fs.existsSync(CACHE_PATH)) return; // nothing to check
-    const indexFile = path.join(CACHE_PATH, 'index');
+    // Modern Chromium puts the cache inside a 'Cache_Data' subdirectory
+    const indexFile = path.join(CACHE_PATH, 'Cache_Data', 'index');
     const corrupt =
       !fs.existsSync(indexFile) ||
       fs.statSync(indexFile).size === 0;
@@ -450,214 +451,77 @@ ipcMain.handle('whatsapp-send', async (event, { contactNameOrNumber, message }) 
 
 // ─── System Controls (Volume, Brightness, Settings) ─────────────────────────
 
-// Volume control via Windows Core Audio API (each action uses Base64-encoded PowerShell)
+// Volume control via Windows Core Audio API (Base64-encoded PowerShell to avoid shell escaping)
+// The C# COM boilerplate is shared via AUDIO_COM_TYPEDEF, only the action line differs per case.
+
+const AUDIO_COM_TYPEDEF = `
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+[Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IAudioEndpointVolume {
+  int f(); int g(); int h(); int i();
+  int SetMasterVolumeLevelScalar(float fLevel, System.Guid pguidEventContext);
+  int j();
+  int GetMasterVolumeLevelScalar(out float pfLevel);
+  int k();
+  int SetMute([MarshalAs(UnmanagedType.Bool)] bool bMute, System.Guid pguidEventContext);
+  int GetMute(out bool pbMute);
+}
+[Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDevice {
+  int Activate(ref System.Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev);
+}
+[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDeviceEnumerator {
+  int f();
+  int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint);
+}
+[ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
+public class Audio {
+  static IAudioEndpointVolume Vol() {
+    var enumerator = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
+    IMMDevice dev = null;
+    Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(0, 1, out dev));
+    IAudioEndpointVolume epv = null;
+    var epvid = typeof(IAudioEndpointVolume).GUID;
+    Marshal.ThrowExceptionForHR(dev.Activate(ref epvid, 23, 0, out epv));
+    return epv;
+  }
+  public static float Volume {
+    get { float v = -1; Marshal.ThrowExceptionForHR(Vol().GetMasterVolumeLevelScalar(out v)); return v; }
+    set { Marshal.ThrowExceptionForHR(Vol().SetMasterVolumeLevelScalar(value, System.Guid.Empty)); }
+  }
+  public static bool Mute {
+    get { bool mute; Marshal.ThrowExceptionForHR(Vol().GetMute(out mute)); return mute; }
+    set { Marshal.ThrowExceptionForHR(Vol().SetMute(value, System.Guid.Empty)); }
+  }
+}
+'@`;
 
 ipcMain.handle('system-volume', async (event, { action, level }) => {
   return new Promise((resolve) => {
-    let psScript = '';
+    let psAction = '';
     switch (action) {
       case 'set': {
         const vol = Math.max(0, Math.min(100, Number(level) || 0)) / 100;
-        psScript = `
-Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-[Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IAudioEndpointVolume {
-  int f(); int g(); int h(); int i();
-  int SetMasterVolumeLevelScalar(float fLevel, System.Guid pguidEventContext);
-  int j();
-  int GetMasterVolumeLevelScalar(out float pfLevel);
-  int k();
-  int SetMute([MarshalAs(UnmanagedType.Bool)] bool bMute, System.Guid pguidEventContext);
-  int GetMute(out bool pbMute);
-}
-[Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDevice {
-  int Activate(ref System.Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev);
-}
-[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDeviceEnumerator {
-  int f();
-  int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint);
-}
-[ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
-public class Audio {
-  static IAudioEndpointVolume Vol() {
-    var enumerator = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
-    IMMDevice dev = null;
-    Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(0, 1, out dev));
-    IAudioEndpointVolume epv = null;
-    var epvid = typeof(IAudioEndpointVolume).GUID;
-    Marshal.ThrowExceptionForHR(dev.Activate(ref epvid, 23, 0, out epv));
-    return epv;
-  }
-  public static float Volume {
-    get { float v = -1; Marshal.ThrowExceptionForHR(Vol().GetMasterVolumeLevelScalar(out v)); return v; }
-    set { Marshal.ThrowExceptionForHR(Vol().SetMasterVolumeLevelScalar(value, System.Guid.Empty)); }
-  }
-  public static bool Mute {
-    get { bool mute; Marshal.ThrowExceptionForHR(Vol().GetMute(out mute)); return mute; }
-    set { Marshal.ThrowExceptionForHR(Vol().SetMute(value, System.Guid.Empty)); }
-  }
-}
-'@
-[Audio]::Volume = ${vol}
-Write-Output "Volume set to ${Math.round(vol * 100)}%"
-`;
+        psAction = `[Audio]::Volume = ${vol}\nWrite-Output "Volume set to ${Math.round(vol * 100)}%"`;
         break;
       }
       case 'get':
-        psScript = `
-Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-[Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IAudioEndpointVolume {
-  int f(); int g(); int h(); int i();
-  int SetMasterVolumeLevelScalar(float fLevel, System.Guid pguidEventContext);
-  int j();
-  int GetMasterVolumeLevelScalar(out float pfLevel);
-  int k();
-  int SetMute([MarshalAs(UnmanagedType.Bool)] bool bMute, System.Guid pguidEventContext);
-  int GetMute(out bool pbMute);
-}
-[Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDevice {
-  int Activate(ref System.Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev);
-}
-[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDeviceEnumerator {
-  int f();
-  int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint);
-}
-[ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
-public class Audio {
-  static IAudioEndpointVolume Vol() {
-    var enumerator = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
-    IMMDevice dev = null;
-    Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(0, 1, out dev));
-    IAudioEndpointVolume epv = null;
-    var epvid = typeof(IAudioEndpointVolume).GUID;
-    Marshal.ThrowExceptionForHR(dev.Activate(ref epvid, 23, 0, out epv));
-    return epv;
-  }
-  public static float Volume {
-    get { float v = -1; Marshal.ThrowExceptionForHR(Vol().GetMasterVolumeLevelScalar(out v)); return v; }
-    set { Marshal.ThrowExceptionForHR(Vol().SetMasterVolumeLevelScalar(value, System.Guid.Empty)); }
-  }
-  public static bool Mute {
-    get { bool mute; Marshal.ThrowExceptionForHR(Vol().GetMute(out mute)); return mute; }
-    set { Marshal.ThrowExceptionForHR(Vol().SetMute(value, System.Guid.Empty)); }
-  }
-}
-'@
-Write-Output ([Math]::Round([Audio]::Volume * 100))
-`;
+        psAction = `Write-Output ([Math]::Round([Audio]::Volume * 100))`;
         break;
       case 'mute':
-        psScript = `
-Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-[Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IAudioEndpointVolume {
-  int f(); int g(); int h(); int i();
-  int SetMasterVolumeLevelScalar(float fLevel, System.Guid pguidEventContext);
-  int j();
-  int GetMasterVolumeLevelScalar(out float pfLevel);
-  int k();
-  int SetMute([MarshalAs(UnmanagedType.Bool)] bool bMute, System.Guid pguidEventContext);
-  int GetMute(out bool pbMute);
-}
-[Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDevice {
-  int Activate(ref System.Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev);
-}
-[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDeviceEnumerator {
-  int f();
-  int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint);
-}
-[ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
-public class Audio {
-  static IAudioEndpointVolume Vol() {
-    var enumerator = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
-    IMMDevice dev = null;
-    Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(0, 1, out dev));
-    IAudioEndpointVolume epv = null;
-    var epvid = typeof(IAudioEndpointVolume).GUID;
-    Marshal.ThrowExceptionForHR(dev.Activate(ref epvid, 23, 0, out epv));
-    return epv;
-  }
-  public static float Volume {
-    get { float v = -1; Marshal.ThrowExceptionForHR(Vol().GetMasterVolumeLevelScalar(out v)); return v; }
-    set { Marshal.ThrowExceptionForHR(Vol().SetMasterVolumeLevelScalar(value, System.Guid.Empty)); }
-  }
-  public static bool Mute {
-    get { bool mute; Marshal.ThrowExceptionForHR(Vol().GetMute(out mute)); return mute; }
-    set { Marshal.ThrowExceptionForHR(Vol().SetMute(value, System.Guid.Empty)); }
-  }
-}
-'@
-[Audio]::Mute = $true
-Write-Output "Muted"
-`;
+        psAction = `[Audio]::Mute = $true\nWrite-Output "Muted"`;
         break;
       case 'unmute':
-        psScript = `
-Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-[Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IAudioEndpointVolume {
-  int f(); int g(); int h(); int i();
-  int SetMasterVolumeLevelScalar(float fLevel, System.Guid pguidEventContext);
-  int j();
-  int GetMasterVolumeLevelScalar(out float pfLevel);
-  int k();
-  int SetMute([MarshalAs(UnmanagedType.Bool)] bool bMute, System.Guid pguidEventContext);
-  int GetMute(out bool pbMute);
-}
-[Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDevice {
-  int Activate(ref System.Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev);
-}
-[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDeviceEnumerator {
-  int f();
-  int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice endpoint);
-}
-[ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorComObject { }
-public class Audio {
-  static IAudioEndpointVolume Vol() {
-    var enumerator = new MMDeviceEnumeratorComObject() as IMMDeviceEnumerator;
-    IMMDevice dev = null;
-    Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(0, 1, out dev));
-    IAudioEndpointVolume epv = null;
-    var epvid = typeof(IAudioEndpointVolume).GUID;
-    Marshal.ThrowExceptionForHR(dev.Activate(ref epvid, 23, 0, out epv));
-    return epv;
-  }
-  public static float Volume {
-    get { float v = -1; Marshal.ThrowExceptionForHR(Vol().GetMasterVolumeLevelScalar(out v)); return v; }
-    set { Marshal.ThrowExceptionForHR(Vol().SetMasterVolumeLevelScalar(value, System.Guid.Empty)); }
-  }
-  public static bool Mute {
-    get { bool mute; Marshal.ThrowExceptionForHR(Vol().GetMute(out mute)); return mute; }
-    set { Marshal.ThrowExceptionForHR(Vol().SetMute(value, System.Guid.Empty)); }
-  }
-}
-'@
-[Audio]::Mute = $false
-Write-Output "Unmuted"
-`;
+        psAction = `[Audio]::Mute = $false\nWrite-Output "Unmuted"`;
         break;
       default:
         resolve({ success: false, error: `Unknown volume action: ${action}` });
         return;
     }
-    // Use Base64-encoded command to avoid all shell escaping issues
+    const psScript = `${AUDIO_COM_TYPEDEF}\n${psAction}`;
     const encoded = Buffer.from(psScript, 'utf16le').toString('base64');
     exec(`powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${encoded}`, { timeout: 15000 }, (error, stdout) => {
       resolve(error ? { success: false, error: error.message } : { success: true, result: stdout.trim() });
@@ -1693,50 +1557,103 @@ ipcMain.handle('check-social', async (event, platform) => {
 });
 
 ipcMain.handle('play-media', async (event, { platform, query }) => {
-  return new Promise(async (resolve) => {
-    try {
-      if (platform.toLowerCase() === "youtube") {
-        // Invisible fetch to grab the top YouTube video ID without a developer API key
-        const response = await fetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`);
-        const text = await response.text();
-        const match = text.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-        
-        if (match && match[1]) {
-          // Open YouTube directly. If the user installed the YouTube Windows App, it intercepts this natively!
-          shell.openExternal(`https://www.youtube.com/watch?v=${match[1]}`);
-          resolve({ success: true });
-        } else {
-          resolve({ success: false, error: "Could not find a valid video ID." });
-        }
+  try {
+    if (platform.toLowerCase() === "youtube") {
+      const liveKeywords = /\b(live|livestream|live\s*stream|24\/7|news\s*live|live\s*news|live\s*tv)\b/i;
+      const isLiveIntent = liveKeywords.test(query);
+      let videoId = null;
+      let matchTitle = '';
 
-      } else if (platform.toLowerCase() === "spotify") {
-        // Open Spotify Desktop straight to the search results
-        const spotifyUrl = `spotify:search:${encodeURIComponent(query)}`;
-        shell.openExternal(spotifyUrl).then(() => {
-          
-          if (process.platform === 'win32') {
-            // Attempt to hit 'Tab' x2 and 'Enter' to focus the top result and play it in Spotify UX
-            let psScript = `$wshell = New-Object -ComObject wscript.shell; `;
-            psScript += `if($wshell.AppActivate('Spotify')) { `;
-            psScript += `Start-Sleep -Seconds 2; `;
-            psScript += `$wshell.SendKeys('{TAB}'); Start-Sleep -Milliseconds 300; `;
-            psScript += `$wshell.SendKeys('{TAB}'); Start-Sleep -Milliseconds 300; `;
-            psScript += `$wshell.SendKeys('~'); `;
-            psScript += `}`;
-            
-            const base64ps = Buffer.from(psScript, 'utf16le').toString('base64');
-            exec(`powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${base64ps}`);
+      // Step 1: If live intent detected, search for currently broadcasting live streams first
+      if (isLiveIntent) {
+        try {
+          const liveUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&eventType=live&maxResults=3&relevanceLanguage=en&order=relevance&key=${YOUTUBE_API_KEY}`;
+          console.log(`[Friday PlayMedia] Searching YouTube LIVE for: "${query}"`);
+          const liveRes = await fetch(liveUrl);
+          if (liveRes.ok) {
+            const liveData = await liveRes.json();
+            if (liveData.items && liveData.items.length > 0) {
+              videoId = liveData.items[0].id?.videoId;
+              matchTitle = liveData.items[0].snippet?.title || '';
+              console.log(`[Friday PlayMedia] ✓ Found LIVE stream: ${videoId} — "${matchTitle}"`);
+            } else {
+              console.log(`[Friday PlayMedia] No live streams found, falling back to regular search`);
+            }
           }
-          resolve({ success: true });
-        });
-
-      } else {
-        resolve({ success: false, error: "Unsupported media platform." });
+        } catch (liveErr) {
+          console.warn('[Friday PlayMedia] Live search failed, trying regular:', liveErr.message);
+        }
       }
-    } catch (e) {
-      resolve({ success: false, error: e.message });
+
+      // Step 2: If no live result (or not a live query), do a regular API search
+      if (!videoId) {
+        try {
+          const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=1&order=relevance&key=${YOUTUBE_API_KEY}`;
+          console.log(`[Friday PlayMedia] Searching YouTube for: "${query}"`);
+          const searchRes = await fetch(searchUrl);
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            if (searchData.items && searchData.items.length > 0) {
+              videoId = searchData.items[0].id?.videoId;
+              matchTitle = searchData.items[0].snippet?.title || '';
+              console.log(`[Friday PlayMedia] ✓ Found video: ${videoId} — "${matchTitle}"`);
+            }
+          }
+        } catch (apiErr) {
+          console.warn('[Friday PlayMedia] API search failed, trying HTML fallback:', apiErr.message);
+        }
+      }
+
+      // Step 3: Last resort — HTML scraping fallback (in case API quota is exhausted)
+      if (!videoId) {
+        try {
+          console.log(`[Friday PlayMedia] API returned no results, falling back to HTML scrape`);
+          const response = await fetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`);
+          const text = await response.text();
+          const match = text.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+          if (match && match[1]) {
+            videoId = match[1];
+            console.log(`[Friday PlayMedia] ✓ Fallback found video: ${videoId}`);
+          }
+        } catch (scrapeErr) {
+          console.error('[Friday PlayMedia] HTML scrape also failed:', scrapeErr.message);
+        }
+      }
+
+      if (videoId) {
+        // Open YouTube directly. If the user installed the YouTube Windows App, it intercepts this natively!
+        shell.openExternal(`https://www.youtube.com/watch?v=${videoId}`);
+        return { success: true, videoId, title: matchTitle };
+      }
+      return { success: false, error: "Could not find a matching video on YouTube." };
+
+    } else if (platform.toLowerCase() === "spotify") {
+      // Open Spotify Desktop straight to the search results
+      const spotifyUrl = `spotify:search:${encodeURIComponent(query)}`;
+      await shell.openExternal(spotifyUrl);
+
+      if (process.platform === 'win32') {
+        // Attempt to hit 'Tab' x2 and 'Enter' to focus the top result and play it in Spotify UX
+        let psScript = `$wshell = New-Object -ComObject wscript.shell; `;
+        psScript += `if($wshell.AppActivate('Spotify')) { `;
+        psScript += `Start-Sleep -Seconds 2; `;
+        psScript += `$wshell.SendKeys('{TAB}'); Start-Sleep -Milliseconds 300; `;
+        psScript += `$wshell.SendKeys('{TAB}'); Start-Sleep -Milliseconds 300; `;
+        psScript += `$wshell.SendKeys('~'); `;
+        psScript += `}`;
+
+        const base64ps = Buffer.from(psScript, 'utf16le').toString('base64');
+        exec(`powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${base64ps}`);
+      }
+      return { success: true };
+
+    } else {
+      return { success: false, error: "Unsupported media platform." };
     }
-  });
+  } catch (e) {
+    console.error('[Friday PlayMedia] Error:', e.message);
+    return { success: false, error: e.message };
+  }
 });
 
 ipcMain.handle('search-google', async (event, query) => {
@@ -3256,21 +3173,195 @@ ipcMain.handle('fetch-news', async () => {
   });
 });
 
+// ─── YouTube News Search (for News Visualizer) ────────────────────────────
+// Uses YouTube Data API v3 with 1-hour caching to save quota
+const YOUTUBE_API_KEY = 'AIzaSyDdXpU9KK-qjOjMZxE5LvaHpcWA29F2RsY';
+const youtubeNewsCache = new Map(); // key: query → { timestamp, results }
+const YOUTUBE_CACHE_TTL = 60 * 60 * 1000; // 1 hour in ms
+
+ipcMain.handle('search-youtube-news', async (event, { query }) => {
+  try {
+    const cacheKey = (query || 'trending').toLowerCase().trim();
+
+    // ── Check cache first ──
+    const cached = youtubeNewsCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < YOUTUBE_CACHE_TTL) {
+      console.log(`[Friday News] Cache HIT for "${cacheKey}" (${Math.round((Date.now() - cached.timestamp) / 1000)}s old)`);
+      return { success: true, results: cached.results, cached: true };
+    }
+
+    // ── Build search query prioritizing live streams ──
+    const searchQuery = `${query} live stream news`;
+
+    // Fetch live broadcasts only
+    const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&eventType=live&maxResults=5&relevanceLanguage=en&key=${YOUTUBE_API_KEY}`;
+
+    console.log(`[Friday News] Searching YouTube LIVE: "${searchQuery}"`);
+
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('[Friday News] YouTube API error:', response.status, errText);
+      return { success: false, error: `YouTube API error: ${response.status}` };
+    }
+
+    const data = await response.json();
+    const results = (data.items || []).map(item => ({
+      id: item.id?.videoId || '',
+      title: item.snippet?.title || 'Untitled',
+      description: item.snippet?.description || '',
+      thumbnail: item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.medium?.url || '',
+      channelTitle: item.snippet?.channelTitle || '',
+      publishedAt: item.snippet?.publishedAt || '',
+    }));
+
+    // ── Store in cache ──
+    youtubeNewsCache.set(cacheKey, { timestamp: Date.now(), results });
+    console.log(`[Friday News] Cached ${results.length} results for "${cacheKey}"`);
+
+    return { success: true, results, cached: false };
+  } catch (e) {
+    console.error('[Friday News] Search failed:', e.message);
+    return { success: false, error: e.message };
+  }
+});
+
 // ─── YouTube Embed URL (for Music/Video Widget) ───────────────────────────
 // Returns a YouTube video ID for embedding without opening Chrome
+// Uses YouTube Data API v3 with live stream detection, falls back to HTML scraping
 ipcMain.handle('search-youtube-embed', async (event, { query }) => {
   try {
-    const response = await fetch(
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`
-    );
-    const text = await response.text();
-    const match = text.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-    if (match && match[1]) {
-      return { success: true, videoId: match[1], embedUrl: `https://www.youtube.com/embed/${match[1]}?autoplay=1&rel=0` };
+    const liveKeywords = /\b(live|livestream|live\s*stream|24\/7|news\s*live|live\s*news|live\s*tv)\b/i;
+    const isLiveIntent = liveKeywords.test(query);
+    let videoId = null;
+
+    // Step 1: If live intent, search for live broadcasts first
+    if (isLiveIntent) {
+      try {
+        const liveUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&eventType=live&maxResults=3&relevanceLanguage=en&order=relevance&key=${YOUTUBE_API_KEY}`;
+        const liveRes = await fetch(liveUrl);
+        if (liveRes.ok) {
+          const liveData = await liveRes.json();
+          if (liveData.items && liveData.items.length > 0) {
+            videoId = liveData.items[0].id?.videoId;
+            console.log(`[Friday Embed] ✓ Found LIVE stream: ${videoId}`);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Step 2: Regular API search
+    if (!videoId) {
+      try {
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=1&order=relevance&key=${YOUTUBE_API_KEY}`;
+        const searchRes = await fetch(searchUrl);
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          if (searchData.items && searchData.items.length > 0) {
+            videoId = searchData.items[0].id?.videoId;
+            console.log(`[Friday Embed] ✓ Found video: ${videoId}`);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Step 3: HTML scraping fallback
+    if (!videoId) {
+      const response = await fetch(
+        `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`
+      );
+      const text = await response.text();
+      const match = text.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+      if (match && match[1]) {
+        videoId = match[1];
+      }
+    }
+
+    if (videoId) {
+      return { success: true, videoId, embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0` };
     }
     return { success: false, error: 'Could not find a video.' };
   } catch (e) {
     return { success: false, error: e.message };
+  }
+});
+
+// ─── Vision IPC Handlers (screen capture + cursor position) ──────────────────
+// These use Electron-only APIs (desktopCapturer, screen) for the Vision module.
+// Completely isolated — does NOT touch the existing image generation handler.
+
+const { desktopCapturer, screen } = require('electron');
+
+ipcMain.handle('capture-screen', async () => {
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: 1920, height: 1080 },
+    });
+    if (sources.length === 0) {
+      return { error: 'No screen sources available.' };
+    }
+    // Return the primary screen's thumbnail as a data URL
+    return sources[0].thumbnail.toDataURL();
+  } catch (err) {
+    console.error('[Friday Vision] Screen capture failed:', err.message);
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle('get-cursor-position', () => {
+  try {
+    const point = screen.getCursorScreenPoint();
+    return { x: point.x, y: point.y };
+  } catch (err) {
+    console.error('[Friday Vision] Cursor position failed:', err.message);
+    return { x: 0, y: 0 };
+  }
+});
+
+ipcMain.handle('analyze-vision', async (event, { base64DataUrl, prompt, context, apiKey, model, baseUrl }) => {
+  try {
+    const systemMessage = context
+      ? `You are Friday's vision system — an advanced AI visual analysis module. Analyze the image provided. Additional context: ${context}`
+      : 'You are Friday\'s vision system — an advanced AI visual analysis module. Analyze the image provided and describe what you see clearly and concisely.';
+
+    const messages = [
+      { role: 'system', content: systemMessage },
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: base64DataUrl } },
+          { type: 'text', text: prompt },
+        ],
+      },
+    ];
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        model: model,
+        messages,
+        max_tokens: 1024,
+        temperature: 0.6,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`API error ${response.status}: ${errText}`);
+    }
+
+    const data = await response.json();
+    return { success: true, content: data.choices?.[0]?.message?.content || '' };
+  } catch (err) {
+    console.error('[Friday Vision] Analysis failed:', err.message);
+    return { success: false, error: err.message };
   }
 });
 
@@ -3283,6 +3374,7 @@ app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization,UseSkiaR
 app.commandLine.appendSwitch('disable-software-rasterizer');
 app.commandLine.appendSwitch('disable-frame-rate-limit');
 app.commandLine.appendSwitch('disable-quic'); // Suppress noisy QUIC connection errors in console
+
 
 app.whenReady().then(() => {
   createWindow();

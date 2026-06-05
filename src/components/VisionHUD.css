@@ -1,0 +1,217 @@
+/* ─── VisionHUD — JARVIS-style Animations ──────────────────────────────────── */
+/* All GPU-accelerated via transform/opacity to avoid layout thrashing.        */
+
+/* ── Scan Line Sweep ─────────────────────────────────────────────────────── */
+@keyframes visionScanLine {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(calc(100% - 2px)); }
+  100% { transform: translateY(0); }
+}
+
+.vision-scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #00e5ff 30%, #00e5ff 70%, transparent 100%);
+  opacity: 0.8;
+  animation: visionScanLine 1.8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 10;
+  will-change: transform;
+}
+
+/* ── Corner Bracket Pulse ────────────────────────────────────────────────── */
+@keyframes cornerPulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1.0; }
+}
+
+.vision-corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  z-index: 5;
+  animation: cornerPulse 2s ease-in-out infinite;
+}
+
+.vision-corner::before,
+.vision-corner::after {
+  content: '';
+  position: absolute;
+  background-color: #00e5ff;
+}
+
+/* Top-left */
+.vision-corner.tl { top: 8px; left: 8px; }
+.vision-corner.tl::before { top: 0; left: 0; width: 20px; height: 2px; }
+.vision-corner.tl::after  { top: 0; left: 0; width: 2px; height: 20px; }
+
+/* Top-right */
+.vision-corner.tr { top: 8px; right: 8px; }
+.vision-corner.tr::before { top: 0; right: 0; width: 20px; height: 2px; }
+.vision-corner.tr::after  { top: 0; right: 0; width: 2px; height: 20px; }
+
+/* Bottom-left */
+.vision-corner.bl { bottom: 8px; left: 8px; }
+.vision-corner.bl::before { bottom: 0; left: 0; width: 20px; height: 2px; }
+.vision-corner.bl::after  { bottom: 0; left: 0; width: 2px; height: 20px; }
+
+/* Bottom-right */
+.vision-corner.br { bottom: 8px; right: 8px; }
+.vision-corner.br::before { bottom: 0; right: 0; width: 20px; height: 2px; }
+.vision-corner.br::after  { bottom: 0; right: 0; width: 2px; height: 20px; }
+
+/* ── Analyzing Spinner ───────────────────────────────────────────────────── */
+@keyframes spinnerDash {
+  0%   { stroke-dashoffset: 251; }
+  50%  { stroke-dashoffset: 63; }
+  100% { stroke-dashoffset: 251; }
+}
+
+@keyframes spinnerRotate {
+  100% { transform: rotate(360deg); }
+}
+
+.vision-spinner {
+  animation: spinnerRotate 2s linear infinite;
+  will-change: transform;
+}
+
+.vision-spinner circle {
+  stroke: #00e5ff;
+  stroke-width: 3;
+  stroke-dasharray: 251;
+  stroke-dashoffset: 251;
+  stroke-linecap: round;
+  fill: none;
+  animation: spinnerDash 1.5s ease-in-out infinite;
+}
+
+/* ── Progress Bar Fill ───────────────────────────────────────────────────── */
+@keyframes progressFill {
+  0%   { width: 0%; }
+  100% { width: 100%; }
+}
+
+.vision-progress-bar {
+  height: 2px;
+  background: #00e5ff;
+  border-radius: 1px;
+  animation: progressFill 2s ease-out forwards;
+  will-change: width;
+}
+
+/* ── Scanning Dots ───────────────────────────────────────────────────────── */
+@keyframes dotBounce {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40%           { opacity: 1.0; transform: scale(1.2); }
+}
+
+.vision-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #00e5ff;
+  margin: 0 3px;
+  will-change: transform, opacity;
+}
+
+.vision-dot:nth-child(1) { animation: dotBounce 1.2s 0.0s ease-in-out infinite; }
+.vision-dot:nth-child(2) { animation: dotBounce 1.2s 0.2s ease-in-out infinite; }
+.vision-dot:nth-child(3) { animation: dotBounce 1.2s 0.4s ease-in-out infinite; }
+
+/* ── Cursor Ring Pulse (screen mode) ─────────────────────────────────────── */
+@keyframes cursorRingPulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50%      { transform: scale(1.5); opacity: 0.2; }
+}
+
+.vision-cursor-ring {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ff6b35;
+  border-radius: 50%;
+  animation: cursorRingPulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* ── Hex Scroll Background ───────────────────────────────────────────────── */
+@keyframes hexFade {
+  0%, 100% { opacity: 0.04; }
+  50%      { opacity: 0.08; }
+}
+
+.vision-hex-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: #00e5ff;
+  line-height: 1.4;
+  animation: hexFade 2s ease-in-out infinite;
+  word-break: break-all;
+  z-index: 0;
+}
+
+/* ── Blinking Cursor ─────────────────────────────────────────────────────── */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.vision-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* ── Status Dot Pulse ────────────────────────────────────────────────────── */
+@keyframes statusPulse {
+  0%, 100% { opacity: 0.6; box-shadow: 0 0 4px #00ff88; }
+  50%      { opacity: 1.0; box-shadow: 0 0 8px #00ff88; }
+}
+
+.vision-status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00ff88;
+  margin-right: 6px;
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+.vision-status-dot.inactive {
+  background: #ff6b35;
+  animation: none;
+  opacity: 0.5;
+}
+
+/* ── Typewriter Effect ───────────────────────────────────────────────────── */
+.vision-typewriter {
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Entry Animation ─────────────────────────────────────────────────────── */
+@keyframes hudSlideIn {
+  0%   { transform: translateY(20px) scale(0.95); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.vision-hud-enter {
+  animation: hudSlideIn 0.35s ease-out forwards;
+}
+
+/* ── Close Button Glow ───────────────────────────────────────────────────── */
+.vision-close:hover {
+  color: #00e5ff;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}

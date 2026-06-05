@@ -170,7 +170,8 @@ export default function FridayOrb({
       const active = st !== "disconnected";
       const currentStyle = styleRef.current;
       const isStatic = currentStyle !== 'wireframe' && currentStyle !== 'pulse-ring' 
-                     && currentStyle !== 'particle-cloud' && currentStyle !== 'waveform';
+                     && currentStyle !== 'particle-cloud' && currentStyle !== 'waveform'
+                     && currentStyle !== 'arcane-core';
 
       // Adaptive frame-rate:
       // Static orbs: 15fps idle, 30fps speaking (they only pulse, no continuous animation)

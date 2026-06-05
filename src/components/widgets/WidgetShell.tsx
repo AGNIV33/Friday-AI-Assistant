@@ -18,6 +18,7 @@ export interface WidgetShellProps {
   height?: number;
   initialX?: number;
   initialY?: number;
+  isFullScreen?: boolean;
   onClose: (id: string) => void;
   children: React.ReactNode;
   accentColor?: string;
@@ -25,7 +26,7 @@ export interface WidgetShellProps {
 
 export default function WidgetShell({
   id, title, width = 340, height = 260,
-  initialX, initialY, onClose, children, accentColor = '#00f2ff',
+  initialX, initialY, isFullScreen = false, onClose, children, accentColor = '#00f2ff',
 }: WidgetShellProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [entered, setEntered] = useState(false);
@@ -37,14 +38,28 @@ export default function WidgetShell({
   // Entry animation
   useEffect(() => {
     const el = shellRef.current;
-    if (el) {
+    if (el && !isFullScreen) {
       el.style.left = posRef.current.x + 'px';
       el.style.top = posRef.current.y + 'px';
     }
     requestAnimationFrame(() => setEntered(true));
   }, []);
 
+  useEffect(() => {
+    const el = shellRef.current;
+    if (el) {
+      if (isFullScreen) {
+        el.style.left = '0px';
+        el.style.top = '0px';
+      } else {
+        el.style.left = posRef.current.x + 'px';
+        el.style.top = posRef.current.y + 'px';
+      }
+    }
+  }, [isFullScreen]);
+
   const onMouseDown = useCallback((e: React.MouseEvent) => {
+    if (isFullScreen) return; // Disable dragging in fullscreen
     e.preventDefault();
     draggingRef.current = true;
     const rect = shellRef.current?.getBoundingClientRect();
@@ -77,17 +92,18 @@ export default function WidgetShell({
       className="friday-widget-shell"
       style={{
         position: 'fixed',
-        width,
+        width: isFullScreen ? '100vw' : width,
+        height: isFullScreen ? '100vh' : 'auto',
         minHeight: height,
-        zIndex: 60,
+        zIndex: isFullScreen ? 100 : 60,
         opacity: entered ? 1 : 0,
         transform: entered ? 'scale(1) translateY(0)' : 'scale(0.85) translateY(20px)',
-        transition: 'opacity 350ms ease, transform 350ms cubic-bezier(0.34,1.56,0.64,1)',
+        transition: 'opacity 350ms ease, transform 350ms cubic-bezier(0.34,1.56,0.64,1), width 300ms, height 300ms, left 300ms, top 300ms',
         // Solid dark background — NO backdrop-filter blur (saves massive GPU overhead)
         background: 'rgba(8, 12, 24, 0.95)',
-        border: `1px solid rgba(${parseInt(accentColor.slice(1,3),16)},${parseInt(accentColor.slice(3,5),16)},${parseInt(accentColor.slice(5,7),16)},0.25)`,
-        borderRadius: 16,
-        boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 1px ${accentColor}40, inset 0 1px 0 rgba(255,255,255,0.05)`,
+        border: isFullScreen ? 'none' : `1px solid rgba(${parseInt(accentColor.slice(1,3),16)},${parseInt(accentColor.slice(3,5),16)},${parseInt(accentColor.slice(5,7),16)},0.25)`,
+        borderRadius: isFullScreen ? 0 : 16,
+        boxShadow: isFullScreen ? 'none' : `0 8px 32px rgba(0,0,0,0.5), 0 0 1px ${accentColor}40, inset 0 1px 0 rgba(255,255,255,0.05)`,
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',

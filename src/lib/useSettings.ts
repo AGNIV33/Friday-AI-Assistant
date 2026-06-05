@@ -203,8 +203,8 @@ export const PERFORMANCE_MODES: PerformanceModeConfig[] = [
 // Available Gemini models for live voice
 export const GEMINI_MODELS = [
   { id: 'gemini-3.1-flash-live-preview', name: 'Gemini 3.1 Flash (Live)', description: 'Fast & efficient' },
-  { id: 'gemini-2.5-flash-preview-native-audio', name: 'Gemini 2.5 Flash (Native Audio)', description: 'Latest audio model' },
-  { id: 'gemini-2.0-flash-live-001', name: 'Gemini 2.0 Flash (Live)', description: 'Stable release' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Latest Live Audio model' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Advanced reasoning (Slower)' },
 ];
 
 // ─── Settings State ──────────────────────────────────────────────────────────

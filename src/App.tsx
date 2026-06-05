@@ -13,12 +13,13 @@ import WidgetManager from "./components/WidgetManager";
 const SettingsPanel = lazy(() => import("./components/SettingsPanel"));
 const AppBrowser = lazy(() => import("./components/AppBrowser"));
 const MapView = lazy(() => import("./components/MapView"));
+const VisionHUD = lazy(() => import("./components/VisionHUD"));
 
 
 export default function App() {
   const { toasts, addToast, removeToast } = useToast();
   const { settings, updateSettings, currentTheme, currentVoice } = useSettings();
-  const { state, error, user, isGameMode, isSleeping, isGeneratingImage, progressTask, mapCommand, widgets, login, toggleConnection, clearMapCommand, getPlaybackAmplitude, closeWidget } = useFriday(addToast, settings.voiceId, settings);
+  const { state, error, user, isGameMode, isSleeping, isGeneratingImage, progressTask, mapCommand, widgets, login, toggleConnection, clearMapCommand, getPlaybackAmplitude, closeWidget, isVisionActive, visionMode, visionResult, visionVideoRef, visionScreenThumbnail, visionCursorPosition, visionScreenDimensions, closeVision } = useFriday(addToast, settings.voiceId, settings);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [appBrowserOpen, setAppBrowserOpen] = useState(false);
@@ -432,6 +433,21 @@ export default function App() {
         onCloseWidget={closeWidget}
         accentColor={accentColor}
       />
+
+      {/* Vision Intelligence HUD */}
+      {isVisionActive && (
+        <Suspense fallback={null}>
+          <VisionHUD
+            mode={visionMode}
+            videoRef={visionVideoRef}
+            result={visionResult ?? undefined}
+            onClose={closeVision}
+            screenThumbnail={visionScreenThumbnail}
+            cursorPosition={visionCursorPosition}
+            screenDimensions={visionScreenDimensions}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

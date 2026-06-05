@@ -369,6 +369,56 @@
   transform: translateZ(0);
 }
 
+/* ─── Settings Panel v2 ─────────────────────────────────────────────────── */
+
+@keyframes settings-border-flow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 0% 200%; }
+}
+
+.settings-edge-line {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--accent, #00f2ff) 25%,
+    transparent 50%,
+    var(--accent, #00f2ff) 75%,
+    transparent 100%
+  );
+  background-size: 100% 200%;
+  animation: settings-border-flow 4s linear infinite;
+  opacity: 0.4;
+}
+
+.settings-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+  cursor: pointer;
+}
+
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--slider-color, #00f2ff);
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 8px var(--slider-glow, rgba(0, 242, 255, 0.4)), 0 2px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.settings-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 14px var(--slider-glow, rgba(0, 242, 255, 0.6)), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
 /* ─── Content Visibility for Off-Screen Panels ───────────────────────────── */
 /* Skips layout/paint for panels that aren't visible */
 
@@ -377,6 +427,7 @@
   content-visibility: auto;
   contain-intrinsic-size: 0 600px; /* approximate size hint */
 }
+
 
 /* ─── Map View: Holographic Tactical Styling ─────────────────────────────── */
 
@@ -536,3 +587,253 @@
 .friday-widget-shell iframe {
   pointer-events: auto;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEWS VISUALIZER — 3D Stacked Card Intelligence Carousel
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── HUD Container ───────────────────────────────────────────────────────── */
+.hud-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #02050a;
+  color: #fff;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  overflow: hidden;
+  border: 1px solid rgba(0, 242, 255, 0.15);
+  box-shadow: inset 0 0 40px rgba(0, 242, 255, 0.05);
+}
+
+.hud-scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 242, 255, 0.03) 2px,
+    rgba(0, 242, 255, 0.03) 4px
+  );
+  mix-blend-mode: screen;
+}
+
+/* ─── TOP TICKER ────────────────────────────────────────────────────────── */
+.hud-ticker {
+  height: 28px;
+  background: rgba(0, 242, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 242, 255, 0.2);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  padding: 0 10px;
+}
+
+.hud-ticker-inner {
+  display: flex;
+  gap: 24px;
+  animation: ticker-scroll 20s linear infinite;
+  white-space: nowrap;
+}
+
+.hud-ticker-item {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.8);
+  letter-spacing: 0.1em;
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(100%); }
+  to { transform: translateX(-100%); }
+}
+
+/* ─── MAIN GRID (Left Video, Right Data) ────────────────────────────────── */
+.hud-main-grid {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 1px;
+  background: rgba(0, 242, 255, 0.1);
+}
+
+.hud-video-pane {
+  flex: 2;
+  position: relative;
+  background: #000;
+  border-right: 1px solid rgba(0, 242, 255, 0.15);
+  padding: 8px;
+}
+
+.hud-video-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(0, 242, 255, 0.5);
+  z-index: 5;
+  pointer-events: none;
+}
+.hud-video-corner.top-left { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+.hud-video-corner.top-right { top: 8px; right: 8px; border-left: none; border-bottom: none; }
+.hud-video-corner.bottom-left { bottom: 8px; left: 8px; border-right: none; border-top: none; }
+.hud-video-corner.bottom-right { bottom: 8px; right: 8px; border-left: none; border-top: none; }
+
+.hud-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  z-index: 1;
+  position: relative;
+  background: #000;
+}
+
+.hud-video-overlay-text {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 3;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0,0,0,0.6);
+  padding: 4px 8px;
+  border: 1px solid rgba(0, 242, 255, 0.3);
+}
+
+.hud-pulse {
+  animation: hudPulse 1.5s ease-in-out infinite;
+}
+@keyframes hudPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+/* ─── RIGHT PANE (Graph & Terminal) ─────────────────────────────────────── */
+.hud-right-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #040812;
+  gap: 1px;
+}
+
+.hud-graph-box {
+  flex: 1;
+  background: rgba(0, 242, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid rgba(0, 242, 255, 0.15);
+}
+
+.hud-box-header {
+  height: 24px;
+  background: rgba(0, 242, 255, 0.08);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 9px;
+  color: rgba(0, 242, 255, 0.7);
+  letter-spacing: 0.15em;
+  gap: 6px;
+  border-bottom: 1px solid rgba(0, 242, 255, 0.1);
+}
+
+.hud-graph-content {
+  flex: 1;
+  padding: 10px;
+  position: relative;
+}
+
+.hud-terminal-box {
+  flex: 1.5;
+  background: rgba(0, 242, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+}
+
+.hud-terminal-content {
+  flex: 1;
+  padding: 8px;
+  overflow-y: auto;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.hud-term-line {
+  margin-bottom: 4px;
+}
+
+.hud-cursor {
+  animation: hudCursor 1s step-end infinite;
+  color: #00f2ff;
+}
+@keyframes hudCursor {
+  50% { opacity: 0; }
+}
+
+/* ─── BOTTOM LIST ───────────────────────────────────────────────────────── */
+.hud-bottom-pane {
+  height: 120px;
+  background: #02050a;
+  border-top: 1px solid rgba(0, 242, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.hud-bottom-header {
+  height: 20px;
+  background: rgba(0, 242, 255, 0.05);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.5);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-bottom: 1px solid rgba(0, 242, 255, 0.1);
+}
+
+.hud-bottom-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.hud-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  border-left: 2px solid transparent;
+}
+
+.hud-list-item.active {
+  color: rgba(255,255,255,0.9);
+  background: rgba(0, 242, 255, 0.08);
+  border-left-color: #00f2ff;
+}
+
+.hud-list-bullet {
+  color: #00f2ff;
+  font-size: 8px;
+  width: 12px;
+}
+
+.hud-list-channel {
+  font-weight: 700;
+  min-width: 100px;
+}
+
+.hud-list-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+

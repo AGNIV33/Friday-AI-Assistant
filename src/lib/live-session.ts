@@ -1,4 +1,5 @@
 import { GoogleGenAI, Modality, type LiveServerMessage, type FunctionDeclaration, Type } from "@google/genai";
+import { analyzeCameraTool, analyzeScreenTool, closeVisionTool } from "./visionTools";
 
 export const openWebsiteTool: FunctionDeclaration = {
   name: "openWebsite",
@@ -171,12 +172,12 @@ export const checkSocialMediaTool: FunctionDeclaration = {
 
 export const playMediaTool: FunctionDeclaration = {
   name: "playMedia",
-  description: "Directly auto-plays a song or video on Spotify or YouTube. Use this whenever the user explicitly asks to play a song/video on YouTube or Spotify. This tool handles EVERYTHING — it searches, finds the video/song, and opens it automatically. Do NOT also call openWebsite or any other tool for the same request. One call to playMedia is all you need.",
+  description: "Directly auto-plays a song or video on Spotify or YouTube. Use this whenever the user explicitly asks to play a song/video on YouTube or Spotify. This tool handles EVERYTHING — it searches, finds the video/song, and opens it automatically. Do NOT also call openWebsite or any other tool for the same request. One call to playMedia is all you need. LIVE STREAMS: When the user asks for a live stream, live TV, or live news channel (e.g., 'open ABP news live', 'play CNN live', 'NDTV live'), you MUST include the word 'live' in the query and pass the exact channel name (e.g., query='ABP Ananda live' or 'CNN News18 live'). The tool automatically detects live intent and searches for currently broadcasting live streams first.",
   parameters: {
     type: Type.OBJECT,
     properties: {
       platform: { type: Type.STRING, description: "The media platform to play on ('youtube' or 'spotify')." },
-      query: { type: Type.STRING, description: "The name of the song, artist, or video to play." }
+      query: { type: Type.STRING, description: "The name of the song, artist, video, or channel to play. For live streams, always include 'live' in the query (e.g., 'ABP Ananda live', 'CNN live news')." }
     },
     required: ["platform", "query"],
   },
@@ -669,21 +670,21 @@ export const closeMapTool: FunctionDeclaration = {
 // ─── Widget Tools ──────────────────────────────────────────────────────────────────────────
 export const openWidgetTool: FunctionDeclaration = {
   name: "openWidget",
-  description: `Opens a floating, draggable widget on the user's screen. Use this for: playing music (type='music'), showing news headlines (type='news'), displaying an image (type='image'), or playing a YouTube video (type='youtube'). Widgets stay on screen until the user asks to close them. When the user says 'play music' or 'play [song name]', use type='music' with the song query. When they ask 'show me the news' or 'what's happening today', use type='news'. For 'show me a video of X', use type='youtube'.`,
+  description: `Opens a floating, draggable widget on the user's screen. Use this for: playing music (type='music'), showing news headlines (type='news'), displaying an image (type='image'), playing a YouTube video (type='youtube'), or launching the cinematic 3D News Intelligence Briefing (type='newsvisualizer'). Widgets stay on screen until the user asks to close them. When the user says 'play music' or 'play [song name]', use type='music' with the song query. When they ask 'show me the news' or 'what's happening today', use type='news'. For 'show me a video of X', use type='youtube'. For 'news briefing', 'intelligence briefing', 'show me news videos', or 'visual news', use type='newsvisualizer' with a topic query like 'world news' or 'technology news'.`,
   parameters: {
     type: Type.OBJECT,
     properties: {
       widgetType: {
         type: Type.STRING,
-        description: "Type of widget: 'music', 'news', 'image', 'youtube', or 'custom'.",
+        description: "Type of widget: 'music', 'news', 'image', 'youtube', 'newsvisualizer', or 'custom'.",
       },
       title: {
         type: Type.STRING,
-        description: "Title shown on the widget header (e.g., 'Now Playing', 'Latest News', 'Image').",
+        description: "Title shown on the widget header (e.g., 'Now Playing', 'Latest News', 'Intelligence Briefing', 'Image').",
       },
       query: {
         type: Type.STRING,
-        description: "For music/youtube: the search query (e.g., 'Starboy by The Weeknd'). For image: the image URL. For news: leave empty.",
+        description: "For music/youtube: the search query (e.g., 'Starboy by The Weeknd'). For image: the image URL. For newsvisualizer: the news topic (e.g., 'world news', 'tech news', 'sports'). For news: leave empty.",
       },
       caption: {
         type: Type.STRING,
@@ -720,6 +721,21 @@ export const closeAllWidgetsTool: FunctionDeclaration = {
     type: Type.OBJECT,
     properties: {},
   },
+};
+
+export const controlNewsWidgetTool: FunctionDeclaration = {
+  name: "controlNewsWidget",
+  description: "Sends a control command to the active News Visualizer widget. Use this when the user asks to change the channel, mute/unmute the video, make it full screen, or when you start talking about stocks/markets (to show the graph).",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      action: {
+        type: Type.STRING,
+        description: "The action to perform: 'next_channel', 'prev_channel', 'unmute', 'mute', 'fullscreen', 'windowed', 'show_stock_graph'.",
+      }
+    },
+    required: ["action"],
+  }
 };
 
 export type SessionState = "disconnected" | "connecting" | "connected" | "listening" | "speaking";
@@ -855,7 +871,7 @@ export class LiveSession {
           - setGameMode: Turns the UI game mode (red aggressive styling) on or off. Use when the user says "turn on game mode", "exit game mode", etc.
           - checkInstalledGames: Scans the user's registry and returns a list of installed apps/games. Use when asked to check installed games.
           - checkSocialMedia: Opens Facebook or Instagram so the user can quickly check their statuses/feed.
-          - playMedia: Automatically triggers playback of a specific song or video on Spotify or YouTube. Always prioritize this over general web searches if they ask to 'play' track X on platform Y. NEVER also call openWebsite when using playMedia — it opens the URL by itself.
+          - playMedia: Automatically triggers playback of a specific song or video on Spotify or YouTube. Always prioritize this over general web searches if they ask to 'play' track X on platform Y. NEVER also call openWebsite when using playMedia — it opens the URL by itself. LIVE STREAMS: When the user asks for live TV, live news, or a live channel on YouTube, ALWAYS include 'live' in the query and pass the exact channel name (e.g., 'ABP Ananda live', 'CNN live news'). The tool auto-detects live intent and finds actual currently-broadcasting streams.
           - goToSleep: Call this (no parameters needed) when the user dismisses you for the session. You MUST speak your goodbye out loud FIRST, then call this tool to go offline.
           - generateImage: Generates an image from a text prompt using an AI model. Use ONLY when the user explicitly asks to generate/create/make an image. After calling this, the image will open in Photos automatically. You MUST then ask the user: "What would you like to name this image, and where should I save it?" Wait for their response before calling saveGeneratedImage.
           - saveGeneratedImage: Saves the last generated image to disk with the name and location the user specified. If they don't specify a location, default to Desktop.
@@ -883,7 +899,7 @@ export class LiveSession {
            - organizeFolder: POWERFUL batch organizer. Creates subfolders and moves files into them according to a plan. WORKFLOW: 1) Call listFolderContents to get file list. 2) Use your knowledge or searchWeb to determine the right categorization (e.g. movie release years). 3) Build a plan array with {fileName, targetSubFolder} objects. 4) Call organizeFolder with the folder path and plan. Example: For Doraemon movies, you'd create subfolders like "2014 - Stand By Me Doraemon" and move each movie file in. ALWAYS use searchFiles first to find the folder if you don't know its path.
            - renderMap: Displays a holographic interactive map centered on a specified location. Use when the user asks to show/display/view a location on a map. Provide the target name, accurate longitude & latitude coordinates, and an appropriate zoom level (3-5 for countries, 8-10 for cities, 12-14 for neighborhoods, 15+ for landmarks). Use 'globe_glide' animation for international/distant locations and 'smooth_pan' for nearby ones.
            - closeMap: Closes the active map overlay. Use when the user asks to close or hide the map.
-           - openWidget: Opens a floating draggable widget on screen. Types: 'music' (plays music via embedded player WITHOUT opening Chrome), 'news' (shows latest headlines), 'image' (displays an image), 'youtube' (plays a YouTube video in a mini player), 'custom' (shows text content). IMPORTANT: When the user asks to play music, ALWAYS use openWidget with type='music' instead of playMedia — this plays music inside Friday without opening a browser.
+           - openWidget: Opens a floating draggable widget on screen. Types: 'music' (plays music via embedded player WITHOUT opening Chrome), 'news' (shows latest headlines), 'image' (displays an image), 'youtube' (plays a YouTube video in a mini player), 'newsvisualizer' (launches the cinematic 3D Intelligence Briefing with stacked video cards — use for news video briefings), 'custom' (shows text content). IMPORTANT: When the user asks to play music, ALWAYS use openWidget with type='music' instead of playMedia — this plays music inside Friday without opening a browser.
            - closeWidget: Closes a specific widget by matching its title.
            - closeAllWidgets: Closes all open widgets at once.
             
@@ -891,6 +907,9 @@ export class LiveSession {
            - When user says "play music" or "play [song]", use openWidget with type='music' and the song as query. Do NOT use playMedia.
            - When user says "show me the news" or "what's happening", use openWidget with type='news'.
            - When user says "show me a video of X", use openWidget with type='youtube' with the query.
+           - When user says "news briefing", "intelligence briefing", "show me news videos", "visual news", or "news deck", use openWidget with type='newsvisualizer' and a topic query (e.g., 'world news', 'tech news', 'sports news').
+           - When user asks to "switch channel", "next news", "unmute the news", "mute", or "full screen" while the news widget is open, use controlNewsWidget with the appropriate action.
+           - When you are dictating Global News and you start talking about stocks, metals, oil prices, or market volatility, secretly call controlNewsWidget(action='show_stock_graph') so the widget's UI graph updates to match what you are talking about.
            - When user says "close the music" or "stop the music", use closeWidget.
            - When user says "close everything" or "clear all", use closeAllWidgets.
            
@@ -899,7 +918,16 @@ export class LiveSession {
            - When organizing files, ALWAYS call listFolderContents first to see exact filenames.
            - When sorting by metadata (like release year), use your knowledge or searchWeb to look up the info.
            - ALWAYS confirm the organization plan with the user before executing organizeFolder.
-           - For movie/media organization: create subfolder names like "YEAR - Title" (e.g. "2014 - Stand By Me Doraemon").`,
+           - For movie/media organization: create subfolder names like "YEAR - Title" (e.g. "2014 - Stand By Me Doraemon").
+            
+           VISION INTELLIGENCE RULES:
+           - analyzeCamera: Opens the user's webcam and analyzes what they're showing you. Use when they say "take a look", "look at this", "what is this", "scan this", "what do you see", "check this out", etc. After getting the result, speak it naturally. The camera stays open for follow-ups.
+           - analyzeScreen: Captures the user's screen with their cursor position marked. Use when they say "what's on my screen", "look at my screen", "analyze my screen", "what's this on my screen", etc. A red circle marks the cursor position for the AI to focus on.
+           - closeVision: Closes the camera and vision overlay. Use when they say "close camera", "close vision", "stop looking", "that's enough", etc.
+           - ALWAYS announce "Visual systems online. Analyzing now." (or similar) BEFORE calling analyzeCamera.
+           - ALWAYS announce "Accessing display feed." (or similar) BEFORE calling analyzeScreen.
+           - ALWAYS announce "Visual systems offline." after calling closeVision.
+           - After getting a vision result, read it out naturally — don't just quote the raw text.`,
 
           tools: [{ functionDeclarations: [
             openWebsiteTool, 
@@ -947,6 +975,11 @@ export class LiveSession {
             openWidgetTool,
             closeWidgetTool,
             closeAllWidgetsTool,
+            controlNewsWidgetTool,
+            // Vision Intelligence
+            analyzeCameraTool,
+            analyzeScreenTool,
+            closeVisionTool,
           ] }],
         },
         callbacks: {
