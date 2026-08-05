@@ -25,7 +25,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   systemBrightness: (action, level) => ipcRenderer.invoke('system-brightness', { action, level }),
   openSettings: (page) => ipcRenderer.invoke('open-settings', page),
   bluetoothControl: (action, deviceName) => ipcRenderer.invoke('bluetooth-control', { action, deviceName }),
-  wifiControl: (action, networkName, password) => ipcRenderer.invoke('wifi-control', { action, networkName, password }),
+  wifiControl: (action, networkName) => ipcRenderer.invoke('wifi-control', { action, networkName }),
   // Window Management
   positionWindow: (appName, position) => ipcRenderer.invoke('position-window', { appName, position }),
   // Document Writing
@@ -59,6 +59,44 @@ contextBridge.exposeInMainWorld('electronAPI', {
   cacheEndSession: (summary, topics) => ipcRenderer.invoke('cache-end-session', { summary, topics }),
   cacheGetContext: () => ipcRenderer.invoke('cache-get-context'),
   cacheGetFrequent: () => ipcRenderer.invoke('cache-get-frequent'),
+  cacheSetSessionSummary: (summary, topics) => ipcRenderer.invoke('cache-set-session-summary', { summary, topics }),
+  cacheGetPatterns: () => ipcRenderer.invoke('cache-get-patterns'),
+  // ── Proactive events (main → renderer) ──
+  // The only subscription-style channel. Returns an unsubscribe function —
+  // without it, React re-renders/HMR would stack duplicate listeners and
+  // Friday would announce the same event several times.
+  onProactiveEvent: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on('friday:proactive', handler);
+    return () => ipcRenderer.removeListener('friday:proactive', handler);
+  },
+  // Scheduler (reminders / alarms)
+  schedulerAdd: (job) => ipcRenderer.invoke('scheduler-add', job),
+  schedulerList: () => ipcRenderer.invoke('scheduler-list'),
+  schedulerCancel: (id) => ipcRenderer.invoke('scheduler-cancel', { id }),
+  // Lightweight vitals for the health watchdog (no PowerShell subprocess)
+  getSystemVitals: () => ipcRenderer.invoke('get-system-vitals'),
+  // Monitor control
+  setMonitorConfig: (config) => ipcRenderer.invoke('set-monitor-config', config),
+  // Clipboard history
+  clipboardSetEnabled: (enabled) => ipcRenderer.invoke('clipboard-set-enabled', { enabled }),
+  clipboardHistory: (limit) => ipcRenderer.invoke('clipboard-history', { limit }),
+  clipboardSearch: (query) => ipcRenderer.invoke('clipboard-search', { query }),
+  clipboardRestore: (index) => ipcRenderer.invoke('clipboard-restore', { index }),
+  clipboardClear: () => ipcRenderer.invoke('clipboard-clear'),
+  // Notes
+  noteAdd: (title, body, tags) => ipcRenderer.invoke('note-add', { title, body, tags }),
+  noteSearch: (query, limit) => ipcRenderer.invoke('note-search', { query, limit }),
+  noteList: (limit) => ipcRenderer.invoke('note-list', { limit }),
+  noteDelete: (query) => ipcRenderer.invoke('note-delete', { query }),
+  // Routines
+  routineSave: (name, steps) => ipcRenderer.invoke('routine-save', { name, steps }),
+  routineList: () => ipcRenderer.invoke('routine-list'),
+  routineGet: (name) => ipcRenderer.invoke('routine-get', { name }),
+  routineDelete: (name) => ipcRenderer.invoke('routine-delete', { name }),
+  // Document reading
+  readDocumentText: (filePath) => ipcRenderer.invoke('read-document-text', { filePath }),
+
   // Widgets
   fetchNews: () => ipcRenderer.invoke('fetch-news'),
   searchYoutubeEmbed: (query) => ipcRenderer.invoke('search-youtube-embed', { query }),

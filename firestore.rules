@@ -66,6 +66,13 @@ service cloud.firestore {
              isValidDateString(data.timestamp);
     }
 
+    function isValidPerson(data) {
+      return data.keys().hasAll(['uid', 'name', 'details']) &&
+             data.uid == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.details is list && data.details.size() <= 40;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -81,6 +88,15 @@ service cloud.firestore {
       match /summaries/{summaryId} {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidSummary(request.resource.data);
+      }
+
+      // Structured memory about people in the user's life (one doc per person).
+      // Subcollections do NOT inherit the parent's rules, so this block is
+      // required — without it the catch-all deny below blocks all access.
+      match /people/{personId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidPerson(request.resource.data);
+        allow delete: if isOwner(userId);
       }
     }
 
