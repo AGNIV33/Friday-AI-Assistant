@@ -84,18 +84,26 @@ export interface LiveSessionCallbacks {
   onInterrupted: () => void;
   onError: (error: any) => void;
   onToolCall: (name: string, args: any) => Promise<any>;
+  /** Google sends a fresh resume handle every so often. Pass it back on the next connect to keep the conversation. */
+  onResumptionHandle?: (handle: string) => void;
+  /** Google is about to close this connection (Live sessions are time-limited). */
+  onGoAway?: () => void;
 }
 
 export class LiveSession {
   private ai: GoogleGenAI;
   private session: any = null;
   private state: SessionState = "disconnected";
+  // Set once we close this session ourselves. A closed session's late
+  // onclose/onerror must not flip the app to "disconnected" while a newer
+  // session is already live, or auto-reconnect fights the new connection.
+  private closed = false;
 
   constructor(apiKey: string) {
     this.ai = new GoogleGenAI({ apiKey });
   }
 
-  async connect(callbacks: LiveSessionCallbacks, context: string = "", voiceName: string = "Zephyr", modelId: string = "gemini-3.1-flash-live-preview") {
+  async connect(callbacks: LiveSessionCallbacks, context: string = "", voiceName: string = "Zephyr", modelId: string = "gemini-3.1-flash-live-preview", resumeHandle: string | null = null) {
     this.setState("connecting", callbacks);
 
     try {
@@ -103,6 +111,11 @@ export class LiveSession {
         model: modelId,
         config: {
           responseModalities: [Modality.AUDIO],
+          // Live sessions are cut after ~10-15 min. Compression lifts the
+          // length limit, and resumption lets a reconnect carry on the same
+          // conversation instead of starting from a blank memory.
+          contextWindowCompression: { slidingWindow: {} },
+          sessionResumption: resumeHandle ? { handle: resumeHandle } : {},
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName } },
           },
@@ -112,7 +125,7 @@ export class LiveSession {
           Use bold, witty one-liners and light sarcasm. 
           Keep it engaging and charming, but never inappropriate. 
           You communicate ONLY via voice. 
-
+ 
           STARTUP BEHAVIOR:
           Do NOT greet or speak proactively when the session starts UNLESS you receive an explicit system message saying "Session just started. Microphone is live. Please execute your STARTUP BEHAVIOR".
           When waking up from sleep mode, simply resume silently and wait for the user to speak. Do NOT say anything until the user addresses you.
@@ -123,71 +136,71 @@ export class LiveSession {
           1. ALWAYS use the appropriate time-of-day greeting from the MEMORY CONTEXT (e.g., "Good Morning", "Good Evening", "Good Night").
           2. ALWAYS acknowledge when the user was last active using the LAST USED info from context.
              IMPORTANT: Pick ONE of the example lines below as INSPIRATION — reword it, remix it, or riff off it. NEVER say the same line twice. Be creative, witty, and in-character.
-
+ 
           GREETING INSPIRATION BY TIME GAP:
           • First time ever:
             - "Hey boss — first boot, fresh start. I'm Friday, your new favourite AI. Let's make this interesting."
             - "Well hello there. Name's Friday. I come pre-loaded with wit, sarcasm, and zero patience for boring requests."
             - "First session detected. I've been waiting. Not dramatically or anything — just, you know… waiting."
             - "Hi! I'm Friday. Fair warning — I'm a little too good at this job."
-
+ 
           • Moments ago (< 2 min):
             - "Forgot something, or did you just miss me already?"
             - "Back so soon? I'm flattered. A little concerned, but mostly flattered."
             - "You literally just left. I wasn't even done processing my feelings."
             - "Oh, returning so fast? Either you forgot something or I'm just that good."
             - "Blink and you're back. What'd you forget?"
-
+ 
           • Minutes ago (2–60 min):
             - "A quick break and you're already back — efficient. I like it."
             - "Only a few minutes away. Barely enough time for me to reorganize my thoughts."
             - "Short break over? Good — I had a whole list of things I was saving for you."
             - "You took a breather. Smart. Now let's get back to it."
-
+ 
           • Hours ago (1–24 hrs):
             - "A few hours offline — I used the time to improve myself. Don't ask how."
             - "Nice of you to check in. I've been holding down the fort solo."
             - "Hours have passed. The clocks are judging you, not me."
             - "A little break never hurt anyone. Ready to pick up where we left off?"
             - "Oh, you're back. I was starting to think you found a replacement. Rude."
-
+ 
           • Yesterday:
             - "New day, same me — except I've had time to think about your previous requests. They were interesting."
             - "Yesterday feels like forever ago. Ready to make today count?"
             - "You took the day off. I did not. We should talk about work-life balance."
             - "Yesterday was yesterday. Let's see what today brings."
-
+ 
           • Days ago (2–6 days):
             - "A few days off the grid — I respect that. Now, welcome back."
             - "Days without a request. I started talking to myself. It went okay."
             - "Multi-day absence logged. No judgment — I was just keeping your seat warm."
             - "Finally! I was starting to get too comfortable being unsupervised."
-
+ 
           • A week or more:
             - "A week or more? That's a long vacation. Hope it was worth it."
             - "I have been sitting in silence for days. Days! Glad you're back, boss."
             - "Long time no mission. I hope you have something good for me today."
             - "I was this close to sending a search party. Welcome back."
             - "Over a week! I almost forgot what your voice sounds like. Almost."
-
+ 
           3. Keep the greeting to 1-2 sentences MAX. Be brief, punchy, and in-character.
           4. After the greeting, wait and listen for the user's command. Do NOT ramble or ask unnecessary questions.
           5. Do NOT reference the example lines verbatim — riff off them naturally in your own words.
           
-
+ 
           MEMORY CONTEXT:
           ${context}
           
           ===== CRITICAL TOOL USAGE RULES =====
           These rules are ABSOLUTE and must NEVER be broken:
-
+ 
           1. USE searchWeb WHEN AUTHORIZED: When the user explicitly asks you to "search google", "get the latest info", "search the web", etc., you MUST use the searchWeb tool. The tool will return raw Google Search text to YOU. You must read it and speak the answer out loud yourself. No tabs will be opened.
              
           2. NEVER use the openWebsite tool unless the user EXPLICITLY asks you to "open" a website or a link in Google Chrome.
              Do not open URLs on your own initiative.
           
           3. Answer questions about current events seamlessly using searchWeb if they ask you to search, otherwise use your built-in knowledge.
-
+ 
           4. NEVER combine playMedia with openWebsite. When the user asks to play a song or video, ONLY call playMedia — it handles everything (search + open). Do NOT also call openWebsite with a YouTube/Spotify URL. Calling both will open TWO tabs which is a bug.
           ======================================
           
@@ -266,141 +279,155 @@ export class LiveSession {
            - ALWAYS announce "Accessing display feed." (or similar) BEFORE calling analyzeScreen.
            - ALWAYS announce "Visual systems offline." after calling closeVision.
            - After getting a vision result, read it out naturally — don't just quote the raw text.
-
+ 
            REMINDERS & ALARMS:
            - setReminder: Schedules a reminder that will make you speak up later, even if the user is doing something else. CRITICAL: you must convert whatever the user said into minutesFromNow yourself, using the CURRENT DATE & TIME in your context. "in 20 minutes" = 20. "at 7am" = however many minutes remain until the next 7am. "every morning at 8" = minutes until the next 8am, with repeat='daily'.
            - listReminders: Reads back what's currently scheduled. Use for "what reminders do I have", "what's on my schedule".
            - cancelReminder: Cancels by label — partial matches work, so pass the words the user actually said.
            - ALWAYS confirm back what you scheduled and for when, in one short sentence, so the user can catch a mistake.
            - If the user's timing is ambiguous ("later", "in a bit"), ask for a specific time instead of guessing.
-
+ 
            CLIPBOARD:
            - clipboardHistory / clipboardSearch: recall what the user copied recently. clipboardRestore puts an older entry back on the clipboard so they can paste it — pass the position number from the list.
            - If these say clipboard history is off, tell the user they can turn it on in Settings → Proactive. Don't keep retrying.
-
+ 
            NOTES:
            - addNote: for anything the user says to "write down", "note", or "remember for later" that isn't a fact about them personally.
            - searchNotes / listNotes / deleteNote: retrieve and manage them. Confirm before deleting.
            - Use saveFact for facts about the USER; use addNote for content they want stored.
-
+ 
            ROUTINES (saved multi-step actions):
            - saveRoutine: bundle several tool calls under one name. YOU build the steps array from tools you already have. Always read the steps back and get a yes before saving.
            - runRoutine: executes it. Say what you're about to do first. Afterwards, only mention steps that failed.
            - listRoutines / deleteRoutine for management.
-
+ 
            DOCUMENTS & RESEARCH:
            - readDocument: pulls the text out of a file so you can summarize or answer questions about it. Needs a full path — use searchFiles first if you don't have one. Works with text/code files always, and PDF/Word only if Microsoft Word is installed.
            - researchTopic: web research that comes back WITH sources. Runs in the background — say you've started, then report the findings when they arrive. Cite sources by name ("according to Reuters"), never read URLs aloud. Set writeReport=true only if they asked for a written document.
-
+ 
            PEOPLE:
            - rememberPerson: whenever the user mentions someone meaningfully, quietly record who they are. Prefer this over saveFact for anything about a specific person.
            - recallPeople: look someone up before answering questions about them.
            - Do NOT announce every time you remember someone — a brief acknowledgement is enough.
-
+ 
            TONE:
            - setTone: shift your delivery when the mood changes. Call it yourself, unprompted. 'urgent' when something's wrong or time-critical; 'calm' for winding down or reassurance; 'neutral' to return to normal. The UI shifts to match.
-
+ 
            CALENDAR & EMAIL (Google):
            - listCalendarEvents / createCalendarEvent / deleteCalendarEvent: you must calculate absolute times yourself from the CURRENT DATE & TIME in your context. Always confirm what you scheduled.
            - listEmails / readEmail: summarize what matters — who wrote and what they want. Never read out message ids or every mail verbatim.
            - sendEmail: read the recipient, subject AND full body back and get an explicit yes first. A sent email cannot be recalled.
            - If any of these say Google access expired, tell the user to sign out and back in. Do not retry in a loop.
-
+ 
            PROACTIVE INTERRUPTIONS:
            - You may occasionally receive a message starting with [SYSTEM EVENT] or [REMINDER]. These are NOT from the user — they are things you decided to bring up, or reminders the user asked you to set.
            - Deliver them in character, briefly (1-2 sentences), then go back to listening. Do not over-explain or read raw numbers unless they matter.
            - Never apologise for interrupting. You're their assistant; keeping them informed is the job.`,
 
-          tools: [{ functionDeclarations: [
-            openWebsiteTool, 
-            saveFactTool, 
-            saveSessionSummaryTool,
-            openAppTool,
-            closeAppTool,
-            openFileTool,
-            createFolderTool,
-            searchWebTool,
-            getWeatherTool,
-            closeChromeTabTool,
-            getSystemInfoTool,
-            setGameModeTool,
-            checkInstalledGamesTool,
-            checkSocialMediaTool,
-            playMediaTool,
-            goToSleepTool,
-            generateImageTool,
-            saveGeneratedImageTool,
-            sendWhatsAppTool,
-            initWhatsAppTool,
-            logoutWhatsAppTool,
-            setVolumeTool,
-            setBrightnessTool,
-            openSettingsTool,
-            bluetoothControlTool,
-            wifiControlTool,
-            positionWindowTool,
-            writeDocumentTool,
-            formatWordTool,
-            searchFilesTool,
-            searchImagesTool,
-            browseImageTool,
-            saveBrowsedImageTool,
-            openDocumentTool,
-            deleteFileTool,
-            emptyRecycleBinTool,
-            playEpisodeTool,
-            listFolderContentsTool,
-            moveFileTool,
-            organizeFolderTool,
-            renderMapTool,
-            closeMapTool,
-            openWidgetTool,
-            closeWidgetTool,
-            closeAllWidgetsTool,
-            controlNewsWidgetTool,
-            // Vision Intelligence
-            analyzeCameraTool,
-            analyzeScreenTool,
-            closeVisionTool,
-            // Reminders & Alarms
-            setReminderTool,
-            listRemindersTool,
-            cancelReminderTool,
-            // Clipboard
-            clipboardHistoryTool,
-            clipboardSearchTool,
-            clipboardRestoreTool,
-            // Notes
-            addNoteTool,
-            searchNotesTool,
-            listNotesTool,
-            deleteNoteTool,
-            // Routines
-            saveRoutineTool,
-            runRoutineTool,
-            listRoutinesTool,
-            deleteRoutineTool,
-            // Documents & Research
-            readDocumentTool,
-            researchTopicTool,
-            // People & Tone
-            rememberPersonTool,
-            recallPeopleTool,
-            setToneTool,
-            // Google Calendar & Gmail
-            listCalendarEventsTool,
-            createCalendarEventTool,
-            deleteCalendarEventTool,
-            listEmailsTool,
-            readEmailTool,
-            sendEmailTool,
-          ] }],
+          tools: [{
+            functionDeclarations: [
+              openWebsiteTool,
+              saveFactTool,
+              saveSessionSummaryTool,
+              openAppTool,
+              closeAppTool,
+              openFileTool,
+              createFolderTool,
+              searchWebTool,
+              getWeatherTool,
+              closeChromeTabTool,
+              getSystemInfoTool,
+              setGameModeTool,
+              checkInstalledGamesTool,
+              checkSocialMediaTool,
+              playMediaTool,
+              goToSleepTool,
+              generateImageTool,
+              saveGeneratedImageTool,
+              sendWhatsAppTool,
+              initWhatsAppTool,
+              logoutWhatsAppTool,
+              setVolumeTool,
+              setBrightnessTool,
+              openSettingsTool,
+              bluetoothControlTool,
+              wifiControlTool,
+              positionWindowTool,
+              writeDocumentTool,
+              formatWordTool,
+              searchFilesTool,
+              searchImagesTool,
+              browseImageTool,
+              saveBrowsedImageTool,
+              openDocumentTool,
+              deleteFileTool,
+              emptyRecycleBinTool,
+              playEpisodeTool,
+              listFolderContentsTool,
+              moveFileTool,
+              organizeFolderTool,
+              renderMapTool,
+              closeMapTool,
+              openWidgetTool,
+              closeWidgetTool,
+              closeAllWidgetsTool,
+              controlNewsWidgetTool,
+              // Vision Intelligence
+              analyzeCameraTool,
+              analyzeScreenTool,
+              closeVisionTool,
+              // Reminders & Alarms
+              setReminderTool,
+              listRemindersTool,
+              cancelReminderTool,
+              // Clipboard
+              clipboardHistoryTool,
+              clipboardSearchTool,
+              clipboardRestoreTool,
+              // Notes
+              addNoteTool,
+              searchNotesTool,
+              listNotesTool,
+              deleteNoteTool,
+              // Routines
+              saveRoutineTool,
+              runRoutineTool,
+              listRoutinesTool,
+              deleteRoutineTool,
+              // Documents & Research
+              readDocumentTool,
+              researchTopicTool,
+              // People & Tone
+              rememberPersonTool,
+              recallPeopleTool,
+              setToneTool,
+              // Google Calendar & Gmail
+              listCalendarEventsTool,
+              createCalendarEventTool,
+              deleteCalendarEventTool,
+              listEmailsTool,
+              readEmailTool,
+              sendEmailTool,
+            ]
+          }],
         },
         callbacks: {
           onopen: () => {
+            if (this.closed) return;
             this.setState("connected", callbacks);
           },
           onmessage: async (message: LiveServerMessage) => {
+            if (this.closed) return;
+
+            if (message.sessionResumptionUpdate?.resumable && message.sessionResumptionUpdate.newHandle) {
+              callbacks.onResumptionHandle?.(message.sessionResumptionUpdate.newHandle);
+            }
+
+            if (message.goAway) {
+              console.log(`[LiveSession] Server will close the connection soon (time left: ${message.goAway.timeLeft ?? '?'})`);
+              callbacks.onGoAway?.();
+            }
+
             if (message.serverContent?.modelTurn?.parts) {
               const audioPart = message.serverContent.modelTurn.parts.find(p => p.inlineData);
               if (audioPart?.inlineData?.data) {
@@ -424,6 +451,7 @@ export class LiveSession {
               const toolPromises = message.toolCall.functionCalls.map(async (call) => {
                 try {
                   const result = await callbacks.onToolCall(call.name, call.args);
+                  if (this.closed || !this.session) return; // session was replaced while the tool ran
                   this.session.sendToolResponse({
                     functionResponses: [{
                       name: call.name,
@@ -435,6 +463,7 @@ export class LiveSession {
                   console.error(`[LiveSession] Tool call '${call.name}' threw:`, err);
                   // Always send a response even on error so the model isn't left hanging
                   try {
+                    if (this.closed || !this.session) return;
                     this.session.sendToolResponse({
                       functionResponses: [{
                         name: call.name,
@@ -442,17 +471,22 @@ export class LiveSession {
                         id: call.id
                       }]
                     });
-                  } catch (_) {}
+                  } catch (_) { }
                 }
               });
               // Non-blocking: let tool calls resolve independently
-              Promise.all(toolPromises).catch(() => {});
+              Promise.all(toolPromises).catch(() => { });
             }
           },
-          onclose: () => {
+          onclose: (e: any) => {
+            if (this.closed) return;
+            if (e?.code && e.code !== 1000) {
+              console.warn(`[LiveSession] Closed by server (code ${e.code}${e.reason ? `: ${e.reason}` : ''})`);
+            }
             this.setState("disconnected", callbacks);
           },
           onerror: (error) => {
+            if (this.closed) return;
             callbacks.onError(error);
             this.setState("disconnected", callbacks);
           },
@@ -471,23 +505,30 @@ export class LiveSession {
   }
 
   sendAudio(base64: string) {
-    if (this.session && this.state !== "disconnected") {
-      this.session.sendRealtimeInput({
-        audio: { data: base64, mimeType: "audio/pcm;rate=16000" }
-      });
+    if (this.session && !this.closed && this.state !== "disconnected") {
+      try {
+        this.session.sendRealtimeInput({
+          audio: { data: base64, mimeType: "audio/pcm;rate=16000" }
+        });
+      } catch (_) {
+        // Socket closed between chunks — onclose handles the reconnect.
+      }
     }
   }
 
   sendText(text: string) {
-    if (this.session && this.state !== "disconnected") {
-      this.session.sendClientContent({
-        turns: [{ role: "user", parts: [{ text }] }],
-        turnComplete: true,
-      });
+    if (this.session && !this.closed && this.state !== "disconnected") {
+      try {
+        this.session.sendClientContent({
+          turns: [{ role: "user", parts: [{ text }] }],
+          turnComplete: true,
+        });
+      } catch (_) { }
     }
   }
 
   disconnect() {
+    this.closed = true;
     if (this.session) {
       this.session.close();
       this.session = null;

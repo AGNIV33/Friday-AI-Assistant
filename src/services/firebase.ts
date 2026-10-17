@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, reauthenticateWithPopup, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, collection, addDoc, query, orderBy, limit, getDocs, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -16,16 +16,65 @@ export const googleProvider = new GoogleAuthProvider();
 // refresh token, so this expires after roughly an hour. When it does, calendar
 // and mail tools fail with a clear "sign in again" message rather than
 // silently doing nothing. Fixing that properly needs a real OAuth server flow.
+//
+// To soften that: the token is saved on this PC so it survives an app restart
+// (Firebase restores the user on its own, but the token used to be lost, so
+// Gmail/Calendar failed on every launch). When it has expired, the first
+// Google tool call opens the sign-in window again instead of just failing.
 googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
 googleProvider.addScope('https://www.googleapis.com/auth/gmail.modify');
 
 let googleAccessToken: string | null = null;
 let googleTokenAcquiredAt = 0;
 const TOKEN_ASSUMED_LIFETIME_MS = 55 * 60 * 1000; // Google's is ~60min; expire early
+const TOKEN_STORAGE_KEY = 'friday.googleAccessToken';
+
+// Restore the token saved by a previous run (the window's localStorage stays on this PC).
+try {
+  const saved = JSON.parse(localStorage.getItem(TOKEN_STORAGE_KEY) || 'null');
+  if (saved?.token && typeof saved.at === 'number') {
+    googleAccessToken = saved.token;
+    googleTokenAcquiredAt = saved.at;
+  }
+} catch (_) { }
 
 export function setGoogleAccessToken(token: string | null) {
   googleAccessToken = token;
   googleTokenAcquiredAt = token ? Date.now() : 0;
+  try {
+    if (token) localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({ token, at: googleTokenAcquiredAt }));
+    else localStorage.removeItem(TOKEN_STORAGE_KEY);
+  } catch (_) { }
+}
+
+let reconnectInFlight: Promise<string | null> | null = null;
+
+/**
+ * Opens the Google sign-in window to get a fresh Calendar/Gmail token.
+ * Uses the signed-in account, so it is usually one click. Concurrent callers
+ * share one window.
+ */
+export function reconnectGoogle(): Promise<string | null> {
+  if (!reconnectInFlight) {
+    reconnectInFlight = (async () => {
+      try {
+        const user = auth.currentUser;
+        if (user?.email) googleProvider.setCustomParameters({ login_hint: user.email });
+        const result = user
+          ? await reauthenticateWithPopup(user, googleProvider)
+          : await signInWithPopup(auth, googleProvider);
+        const token = GoogleAuthProvider.credentialFromResult(result)?.accessToken || null;
+        setGoogleAccessToken(token);
+        return token;
+      } catch (e) {
+        console.warn('[Google] Reconnect cancelled or failed:', e);
+        return null;
+      } finally {
+        reconnectInFlight = null;
+      }
+    })();
+  }
+  return reconnectInFlight;
 }
 
 export function getGoogleAccessToken(): string | null {
@@ -39,31 +88,43 @@ export function getGoogleAccessToken(): string | null {
 
 /** Shared fetch wrapper for Google REST APIs. */
 export async function googleApiFetch(url: string, init: RequestInit = {}) {
-  const token = getGoogleAccessToken();
-  if (!token) {
-    return {
-      ok: false,
-      needsAuth: true,
-      error: 'Google access has expired. Ask the user to sign out and sign back in to reconnect Calendar and Gmail.',
-    } as const;
-  }
+  const NEEDS_AUTH = {
+    ok: false,
+    needsAuth: true,
+    error: 'Google access could not be refreshed. A Google sign-in window was opened; ask the user to finish signing in there (and allow Calendar and Gmail), then try again.',
+  } as const;
+
+  let token = getGoogleAccessToken() || await reconnectGoogle();
+  if (!token) return NEEDS_AUTH;
 
   try {
-    const res = await fetch(url, {
+    const send = (t: string) => fetch(url, {
       ...init,
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${t}`,
         'Content-Type': 'application/json',
         ...(init.headers || {}),
       },
     });
 
-    if (res.status === 401 || res.status === 403) {
+    let res = await send(token);
+
+    // 401 = token expired early or was revoked: get a new one and retry once.
+    if (res.status === 401) {
       setGoogleAccessToken(null);
+      token = await reconnectGoogle();
+      if (!token) return NEEDS_AUTH;
+      res = await send(token);
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      const body = await res.json().catch(() => ({}));
+      const reason = body?.error?.message ? ` Google said: ${body.error.message}` : '';
+      if (res.status === 401) setGoogleAccessToken(null);
       return {
         ok: false,
         needsAuth: true,
-        error: 'Google denied the request — the sign-in may have expired or the permission was not granted. Ask the user to sign out and back in.',
+        error: `Google refused the request (${res.status}).${reason} The permission may not have been granted — ask the user to sign out, sign back in and tick the Calendar and Gmail boxes.`,
       } as const;
     }
 
@@ -73,7 +134,7 @@ export async function googleApiFetch(url: string, init: RequestInit = {}) {
     }
     return { ok: true, data: body } as const;
   } catch (e: any) {
-    return { ok: false, needsAuth: false, error: e.message || 'Network error contacting Google.' } as const;
+    return { ok: false, needsAuth: false, error: `Could not reach Google (${e.message || 'network error'}). Check the internet connection.` } as const;
   }
 }
 
